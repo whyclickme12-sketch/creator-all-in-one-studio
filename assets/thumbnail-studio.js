@@ -314,7 +314,7 @@
           var host = document.getElementById('thResult');
           var box = document.createElement('div');
           box.className = 'card';
-          box.innerHTML = CAS.block('썸네일·캡션 생성 프롬프트', buildPrompt(topic));
+          box.innerHTML = CAS.block('썸네일·캡션 생성 프롬프트', CAS.gemini.copyPrompt(buildPrompt(topic), SCHEMA));
           host.appendChild(box);
           CAS.bindCopy(host);
           return;
@@ -324,7 +324,7 @@
           .catch(function (e) {
             CAS.setStatus(status, '생성 실패: ' + CAS.errText(e), 'err');
             var host = document.getElementById('thResult');
-            host.innerHTML = '<div class="card">' + CAS.block('썸네일·캡션 생성 프롬프트', buildPrompt(topic)) + '</div>';
+            host.innerHTML = '<div class="card">' + CAS.block('썸네일·캡션 생성 프롬프트', CAS.gemini.copyPrompt(buildPrompt(topic), SCHEMA)) + '</div>';
             host.classList.remove('hidden');
             CAS.bindCopy(host);
             CAS.busy(btn, false);

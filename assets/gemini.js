@@ -79,6 +79,13 @@
   CAS.gemini = {
     ready: function () { return !!key(); },
 
+    /* 프롬프트 복사용 — 프리셋 규칙(말토·금지어·기본 태그·고정 멘트)까지 한 덩어리로 만들어 준다. */
+    copyPrompt: function (userPrompt, schemaText) {
+      var head = systemPrompt();
+      if (schemaText) head += '\n\n[출력 형식] 아래 JSON 형식만 출력한다.\n' + schemaText;
+      return head + '\n\n[요청]\n' + userPrompt;
+    },
+
     testKey: function (testValue, testModel) {
       var saved = CAS.getSetting('geminiKey');
       var savedModel = CAS.getSetting('model');

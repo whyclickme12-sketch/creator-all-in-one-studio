@@ -328,7 +328,7 @@
             render(d, { demo: true, note: '샘플 대본입니다(키 없음). 프롬프트를 복사해 Gemini·ChatGPT에 붙여 넣으면 주제에 맞는 대본을 받을 수 있습니다.' });
             var box = document.createElement('div');
             box.className = 'card';
-            box.innerHTML = CAS.block('대본 생성 프롬프트', buildPrompt());
+            box.innerHTML = CAS.block('대본 생성 프롬프트', CAS.gemini.copyPrompt(buildPrompt(), schemaHint()));
             host.appendChild(box);
             CAS.bindCopy(host);
             return;
@@ -345,7 +345,7 @@
             .catch(function (e) {
               CAS.setStatus(status, '생성 실패: ' + CAS.errText(e), 'err');
               var host = document.getElementById('scResult');
-              host.innerHTML = '<div class="card">' + CAS.block('대본 생성 프롬프트(직접 붙여넣기)', buildPrompt()) + '</div>';
+              host.innerHTML = '<div class="card">' + CAS.block('대본 생성 프롬프트(직접 붙여넣기)', CAS.gemini.copyPrompt(buildPrompt(), schemaHint())) + '</div>';
               host.classList.remove('hidden');
               CAS.bindCopy(host);
             });
