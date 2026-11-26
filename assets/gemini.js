@@ -8,6 +8,19 @@
   function key() { return String(CAS.getSetting('geminiKey') || '').trim(); }
   function model() { return CAS.getSetting('model') || 'gemini-2.5-flash'; }
 
+  function is25(modelName) { return /^gemini-2\.5/.test(modelName); }
+
+  function buildBody(modelName, system, prompt, gen) {
+    var cfg = Object.assign({}, gen);
+    // 2.5 모델은 thinking이 출력 토큰을 잡아먹어 JSON이 잘릴 수 있어 끈다.
+    if (is25(modelName)) cfg.thinkingConfig = { thinkingBudget: 0 };
+    return {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: cfg
+    };
+  }
+
   function call(modelName, body) {
     return fetch(BASE + modelName + ':generateContent?key=' + encodeURIComponent(key()), {
       method: 'POST',
@@ -87,18 +100,15 @@
     /* 자유 텍스트 생성 */
     text: function (userPrompt, opts) {
       opts = opts || {};
-      var body = {
-        systemInstruction: { parts: [{ text: opts.system || systemPrompt() }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: opts.temperature == null ? 0.85 : opts.temperature,
-          maxOutputTokens: opts.maxTokens || 4096
-        }
+      var gen = {
+        temperature: opts.temperature == null ? 0.85 : opts.temperature,
+        maxOutputTokens: opts.maxTokens || 4096
       };
+      var system = opts.system || systemPrompt();
       var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
       function attempt(i) {
-        return call(order[i], body).catch(function (e) {
-          var retryable = e.status === 404 || e.status === 400 && /model/i.test(e.message || '');
+        return call(order[i], buildBody(order[i], system, userPrompt, gen)).catch(function (e) {
+          var retryable = e.status === 404 || (e.status === 400 && /model|thinking/i.test(e.message || ''));
           if (retryable && i < order.length - 1) return attempt(i + 1);
           throw e;
         });
@@ -111,19 +121,15 @@
       opts = opts || {};
       var instruction = systemPrompt(opts.extraSystem)
         + '\n\n아래 JSON 스키마에 정확히 맞춰 JSON 하나만 출력한다.\n' + (opts.schemaHint || '');
-      var body = {
-        systemInstruction: { parts: [{ text: instruction }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: opts.temperature == null ? 0.8 : opts.temperature,
-          maxOutputTokens: opts.maxTokens || 6144,
-          responseMimeType: 'application/json'
-        }
+      var gen = {
+        temperature: opts.temperature == null ? 0.8 : opts.temperature,
+        maxOutputTokens: opts.maxTokens || 8192,
+        responseMimeType: 'application/json'
       };
       var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
       function attempt(i) {
-        return call(order[i], body).catch(function (e) {
-          var retryable = e.status === 404 || (e.status === 400 && /model|response/i.test(e.message || ''));
+        return call(order[i], buildBody(order[i], instruction, userPrompt, gen)).catch(function (e) {
+          var retryable = e.status === 404 || (e.status === 400 && /model|response|thinking/i.test(e.message || ''));
           if (retryable && i < order.length - 1) return attempt(i + 1);
           throw e;
         });
