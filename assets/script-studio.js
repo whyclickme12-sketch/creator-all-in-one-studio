@@ -13,7 +13,7 @@
       '  "hooks": ["첫 3초 후킹 문장 2개"],',
       '  "shorts": { "totalSeconds": 40, "segments": [ { "start": 0, "end": 3, "line": "내레이션", "broll": "화면 지시", "caption": "화면 자막" } ] },',
       '  "longform": { "totalSeconds": 180, "sections": [ { "start": 0, "end": 12, "line": "내레이션", "broll": "화면 지시", "caption": "섹션 제목" } ] },',
-      '  "citations": ["저자 연도 학술지 — 한 줄 요약"],',
+      '  "citations": ["근거 — 논문·공식 자료·매장 정보 등. 없으면 빈 배열"],',
       '  "hashtags": ["#태그"],',
       '  "factcheck": ["확인이 필요한 부분"]',
       '}'
@@ -23,21 +23,24 @@
   function buildPrompt() {
     var topic = state.topic;
     var p = CAS.preset();
+    var f = p.formats || {};
+    var ss = f.shorts || 40;
+    var lm = Math.round((f.longform || 180) / 60);
     var parts = [];
     parts.push('주제: ' + topic);
     parts.push('채널 프리셋: ' + p.label);
-    if (state.format === 'both') parts.push('포맷: 40초 쇼츠 1편 + 3분 롱폼 1편을 모두 만든다.');
-    if (state.format === 'shorts') parts.push('포맷: 40초 쇼츠만 만든다. (longform은 빈 배열)');
-    if (state.format === 'longform') parts.push('포맷: 3분 롱폼만 만든다. (shorts는 빈 배열)');
+    if (state.format === 'both') parts.push('포맷: ' + ss + '초 쇼츠 1편 + ' + lm + '분 롱폼 1편을 모두 만든다.');
+    if (state.format === 'shorts') parts.push('포맷: ' + ss + '초 쇼츠만 만든다. (longform은 빈 배열)');
+    if (state.format === 'longform') parts.push('포맷: ' + lm + '분 롱폼만 만든다. (shorts는 빈 배열)');
     if (state.refMeta) {
       parts.push('\n[레퍼런스] ' + (state.refMeta.title || '') + '\n' + String(state.refMeta.text || '').slice(0, 3000));
       parts.push('레퍼런스의 전개 순서와 후킹 방식만 참고하고 문장은 그대로 쓰지 않는다.');
     }
     parts.push('\n요구사항:');
     parts.push('- 초 단위 타임라인으로 끊는다. 쇼츠는 3~5초 단위 8~12개 구간, 롱폼은 12~20초 단위 10~14개 구간.');
-    parts.push('- 각 구간의 broll에는 실제로 만들 수 있는 화면(논문 도표·Forest plot·기전 도식·실사 촬영)을 구체적으로 적는다. 반짝이는 3D CG는 쓰지 않는다.');
+    parts.push('- 각 구간의 broll에는 실제로 찍을 수 있는 화면을 구체적으로 적는다(프리셋의 화면 규칙을 따른다). 반짝이는 3D CG는 쓰지 않는다.');
     parts.push('- line은 실제로 읽을 수 있는 구어체 한국어. 한 구간 1~2문장.');
-    parts.push('- 수치·논문은 실존하는 것만 쓰고, 확실하지 않으면 factcheck에 적는다.');
+    parts.push('- 수치·가게 정보는 확인된 것만 쓰고, 확실하지 않으면 factcheck에 적는다.');
     parts.push('- titles는 클릭을 부르되 낚시하지 않는다. 숫자나 대비를 활용한다.');
     return parts.join('\n');
   }

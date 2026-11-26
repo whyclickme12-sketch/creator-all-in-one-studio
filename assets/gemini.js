@@ -50,8 +50,10 @@
   function systemPrompt(extra) {
     var p = CAS.preset();
     var ban = (p.ban && p.ban.length) ? '\n[금지 표현] 다음 단어는 쓰지 않는다: ' + p.ban.join(', ') : '';
+    var tags = (p.tags && p.tags.length) ? '\n[기본 해시태그] hashtags 배열은 이 태그들로 시작하고, 주제에 맞는 태그를 뒤에 덧붙인다: ' + p.tags.join(' ') : '';
+    var sign = p.signature ? '\n[고정 엔딩 멘트] 대본의 마지막 구간 line은 다음 문장 그대로 끝맺는다: "' + p.signature + '"' : '';
     return '너는 한국어 유튜브 채널 운영을 돕는 실무 PD 겸 카피라이터다.\n'
-      + '[채널 스타일]\n' + p.style + ban + '\n'
+      + '[채널 스타일]\n' + p.style + ban + tags + sign + '\n'
       + '[공통 규칙]\n'
       + '- 수치나 사실을 만들지 않는다. 모르면 "확인 필요"라고 적는다.\n'
       + '- 한국어로, 실제로 말할 수 있는 문장으로 쓴다. 광고 문구처럼 과장하지 않는다.\n'
