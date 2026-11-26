@@ -1,17 +1,19 @@
-/* 앱 셸 오프라인 캐시 (network-first, 실패 시 캐시) */
+/* 앱 셸 오프라인 캐시 (network-first, 실패 시 캐시)
+   index.html의 ?v= 값과 VERSION을 함께 올려 주세요(에셋 캐시 갱신용). */
 const VERSION = 'v1.0.2';
+const V = '1.0.2';
 const SHELL = [
   './',
   './index.html',
-  './assets/app.css',
-  './assets/app.js',
-  './assets/youtube.js',
-  './assets/gemini.js',
-  './assets/analyzer.js',
-  './assets/script-studio.js',
-  './assets/thumbnail-studio.js',
-  './assets/cut-editor.js',
-  './assets/boot.js',
+  './assets/app.css?v=' + V,
+  './assets/app.js?v=' + V,
+  './assets/youtube.js?v=' + V,
+  './assets/gemini.js?v=' + V,
+  './assets/analyzer.js?v=' + V,
+  './assets/script-studio.js?v=' + V,
+  './assets/thumbnail-studio.js?v=' + V,
+  './assets/cut-editor.js?v=' + V,
+  './assets/boot.js?v=' + V,
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'
