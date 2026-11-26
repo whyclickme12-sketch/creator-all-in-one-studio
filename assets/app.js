@@ -97,7 +97,7 @@
   var defaults = {
     ytKey: '',
     geminiKey: '',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',
     preset: 'healthlab',
     workerUrl: '',
     lastTab: 'analyzer'
@@ -320,7 +320,10 @@
     var worker = document.getElementById('workerUrl');
     if (ytKey) ytKey.value = settings.ytKey || '';
     if (geminiKey) geminiKey.value = settings.geminiKey || '';
-    if (modelSel) modelSel.value = settings.model || 'gemini-2.5-flash';
+    if (modelSel) {
+      modelSel.value = settings.model || 'gemini-flash-latest';
+      if (!modelSel.value) { modelSel.value = 'gemini-flash-latest'; CAS.saveSettings({ model: 'gemini-flash-latest' }); }
+    }
     if (worker) worker.value = settings.workerUrl || '';
 
     var saveBtn = document.getElementById('btnSaveKeys');

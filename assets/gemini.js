@@ -3,17 +3,22 @@
   'use strict';
   var CAS = window.CAS;
   var BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
-  var FALLBACK = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  var FALLBACK = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash'];
 
   function key() { return String(CAS.getSetting('geminiKey') || '').trim(); }
-  function model() { return CAS.getSetting('model') || 'gemini-2.5-flash'; }
+  // 예전에 저장된 모델 이름(2025년식)은 더 이상 신규 사용자에게 제공되지 않으므로 최신 모델로 옮긴다.
+  var LEGACY_MODEL = { 'gemini-2.5-flash': 'gemini-flash-latest', 'gemini-2.0-flash': 'gemini-flash-latest', 'gemini-2.5-pro': 'gemini-3.8-flash' };
+  function model() {
+    var m = String(CAS.getSetting('model') || '').trim() || 'gemini-flash-latest';
+    return LEGACY_MODEL[m] || m;
+  }
 
-  function is25(modelName) { return /^gemini-2\.5/.test(modelName); }
+  // 2.5·3.x Flash 계열은 thinking이 출력 토큰을 잡아먹어 JSON이 잘릴 수 있어 끈다.
+  function noThinking(modelName) { return /^gemini-(2\.5|3\.)/.test(modelName); }
 
   function buildBody(modelName, system, prompt, gen) {
     var cfg = Object.assign({}, gen);
-    // 2.5 모델은 thinking이 출력 토큰을 잡아먹어 JSON이 잘릴 수 있어 끈다.
-    if (is25(modelName)) cfg.thinkingConfig = { thinkingBudget: 0 };
+    if (noThinking(modelName)) cfg.thinkingConfig = { thinkingBudget: 0 };
     return {
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
