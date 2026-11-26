@@ -80,7 +80,7 @@
   function barList(items, maxIdx) {
     var max = Math.max.apply(null, items.map(function (it) { return it.count; }).concat([1]));
     return items.map(function (it) {
-      var pct = Math.round((it.count / max) * 100);
+      var pct = it.count > 0 ? Math.max(3, Math.round((it.count / max) * 100)) : 0;
       return '<div class="bar-row"><span class="lbl">' + CAS.esc(it.label) + '</span>' +
         '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%"></span></span>' +
         '<span class="val">' + (it.count ? it.count + '편' : '-') + '</span></div>';

@@ -48,6 +48,7 @@ assets/script-studio.js    탭2 대본 생성·SRT/TXT
 assets/thumbnail-studio.js 탭3 콘셉트·캡션 + Canvas 편집기
 assets/cut-editor.js       탭4 무음 감지·타임라인·워커 렌더
 worker/                    선택: 원격 렌더 서버(FFmpeg + Whisper)
+dev/mobile-preview.html    데스크톱에서 390px 모바일 레이아웃을 확인하는 미리보기
 ```
 
 ## 개인정보
