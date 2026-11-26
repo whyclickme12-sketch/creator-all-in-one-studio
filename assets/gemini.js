@@ -16,14 +16,22 @@
   // 2.5 이상(Gemini 3.x · flash-latest 별칭 포함)은 thinking이 출력 토큰과 시간을 잡아먹어 JSON이 잘릴 수 있어 끈다.
   function noThinking(modelName) { return !/^gemini-(1\.5|2\.0)/.test(modelName); }
 
-  function buildBody(modelName, system, prompt, gen) {
+  function buildBody(modelName, system, prompt, gen, thinkingOff) {
     var cfg = Object.assign({}, gen);
-    if (noThinking(modelName)) cfg.thinkingConfig = { thinkingBudget: 0 };
+    if (noThinking(modelName) && thinkingOff !== false) cfg.thinkingConfig = { thinkingBudget: 0 };
     return {
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: cfg
     };
+  }
+
+  /* thinking 끄기(thinkingBudget 0)를 지원하지 않는 모델은 400을 돌려주므로, 그때만 thinking을 켜고 한 번 재시도한다. */
+  function generate(modelName, system, prompt, gen) {
+    return call(modelName, buildBody(modelName, system, prompt, gen, true)).catch(function (e) {
+      if (e.status === 400 && noThinking(modelName)) return call(modelName, buildBody(modelName, system, prompt, gen, false));
+      throw e;
+    });
   }
 
   function call(modelName, body) {
@@ -98,7 +106,7 @@
       if (testModel) CAS.saveSettings({ model: testModel });
       var m = testModel || model();
       // 실제 생성과 같은 요청 형태(thinking 끄기 포함)로 확인한다. 토큰이 16이면 thinking만 쓰고 본문이 비어 실패로 보인다.
-      return call(m, buildBody(m, 'You are a health check.', '한 단어로 "ok"라고만 답해.', { temperature: 0, maxOutputTokens: 64 })).then(function (t) {
+      return generate(m, 'You are a health check.', '한 단어로 "ok"라고만 답해.', { temperature: 0, maxOutputTokens: 64 }).then(function (t) {
         if (testValue && testValue !== saved) CAS.saveSettings({ geminiKey: saved || '' });
         if (testModel) CAS.saveSettings({ model: savedModel });
         return /ok/i.test(t);
@@ -119,7 +127,7 @@
       var system = opts.system || systemPrompt();
       var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
       function attempt(i) {
-        return call(order[i], buildBody(order[i], system, userPrompt, gen)).catch(function (e) {
+        return generate(order[i], system, userPrompt, gen).catch(function (e) {
           var retryable = e.status === 404 || (e.status === 400 && /model|thinking/i.test(e.message || ''));
           if (retryable && i < order.length - 1) return attempt(i + 1);
           throw e;
@@ -140,7 +148,7 @@
       };
       var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
       function attempt(i) {
-        return call(order[i], buildBody(order[i], instruction, userPrompt, gen)).catch(function (e) {
+        return generate(order[i], instruction, userPrompt, gen).catch(function (e) {
           var retryable = e.status === 404 || (e.status === 400 && /model|response|thinking/i.test(e.message || ''));
           if (retryable && i < order.length - 1) return attempt(i + 1);
           throw e;
