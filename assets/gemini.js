@@ -13,8 +13,8 @@
     return LEGACY_MODEL[m] || m;
   }
 
-  // 2.5·3.x Flash 계열은 thinking이 출력 토큰을 잡아먹어 JSON이 잘릴 수 있어 끈다.
-  function noThinking(modelName) { return /^gemini-(2\.5|3\.)/.test(modelName); }
+  // 2.5 이상(Gemini 3.x · flash-latest 별칭 포함)은 thinking이 출력 토큰과 시간을 잡아먹어 JSON이 잘릴 수 있어 끈다.
+  function noThinking(modelName) { return !/^gemini-(1\.5|2\.0)/.test(modelName); }
 
   function buildBody(modelName, system, prompt, gen) {
     var cfg = Object.assign({}, gen);
@@ -97,10 +97,8 @@
       if (testValue && testValue !== saved) CAS.saveSettings({ geminiKey: testValue.trim() });
       if (testModel) CAS.saveSettings({ model: testModel });
       var m = testModel || model();
-      return call(m, {
-        contents: [{ role: 'user', parts: [{ text: '한 단어로 "ok"라고만 답해.' }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 16 }
-      }).then(function (t) {
+      // 실제 생성과 같은 요청 형태(thinking 끄기 포함)로 확인한다. 토큰이 16이면 thinking만 쓰고 본문이 비어 실패로 보인다.
+      return call(m, buildBody(m, 'You are a health check.', '한 단어로 "ok"라고만 답해.', { temperature: 0, maxOutputTokens: 64 })).then(function (t) {
         if (testValue && testValue !== saved) CAS.saveSettings({ geminiKey: saved || '' });
         if (testModel) CAS.saveSettings({ model: savedModel });
         return /ok/i.test(t);

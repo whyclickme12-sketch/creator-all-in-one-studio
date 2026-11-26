@@ -1,6 +1,6 @@
 /* 앱 셸 오프라인 캐시 (network-first, 실패 시 캐시)
    index.html의 ?v= 값과 VERSION을 함께 올려 주세요(에셋 캐시 갱신용). */
-const VERSION = 'v1.0.11';
+const VERSION = 'v1.0.12';
 const V = '1.0.10';
 const SHELL = [
   './',
