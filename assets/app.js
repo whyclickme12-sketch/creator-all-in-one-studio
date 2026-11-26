@@ -355,8 +355,10 @@
   function fillKeyInputs() {
     var yt = document.getElementById('ytKey');
     var gem = document.getElementById('geminiKey');
+    var sel = document.getElementById('geminiModel');
     if (yt) yt.value = settings.ytKey || '';
     if (gem) gem.value = settings.geminiKey || '';
+    if (sel && settings.model) sel.value = settings.model;
   }
 
   function showSetupNotice() {
