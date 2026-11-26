@@ -299,6 +299,102 @@
     });
   };
 
+  /* ---------- 원클릭 세팅: #setup=<base64 또는 쿼리문자열> → localStorage ----------
+     폰에서 키를 붙여넣지 않아도 되도록, 링크 한 번으로 yt/gem 키를 저장한다.
+     · 저장 즉시 history.replaceState로 해시를 지워 주소창·방문 기록·공유에 키가 남지 않게 한다.
+     · 저장소 코드에는 실제 키를 절대 넣지 않는다(키는 링크에만 있다). */
+  var SETUP_PREFIX = '#setup=';
+
+  function b64ToText(b64) {
+    var s = String(b64 || '').replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '');
+    while (s.length % 4) s += '=';
+    var bin = atob(s);
+    try {
+      return decodeURIComponent(bin.split('').map(function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+    } catch (e) { return bin; }
+  }
+
+  function safeDecode(s) {
+    try { return decodeURIComponent(String(s).replace(/\+/g, '%20')); }
+    catch (e) { return String(s); }
+  }
+
+  /* 링크의 값을 { yt, gem, model }로 해석 — base64url/base64/평문 쿼리/JSON 모두 허용 */
+  CAS.parseSetup = function (raw) {
+    var text = String(raw || '').trim();
+    var out = { yt: '', gem: '', model: '' };
+    if (!text) return out;
+    var looksPlain = /^\{/.test(text) || /(^|&)(yt|gem|ytKey|geminiKey)=/.test(text);
+    if (!looksPlain) {
+      try {
+        var dec = b64ToText(text);
+        if (dec && /[\{\=]/.test(dec)) text = dec.trim();
+      } catch (e) {}
+    }
+    var obj = null;
+    if (text.charAt(0) === '{') {
+      try { obj = JSON.parse(text); } catch (e) { obj = null; }
+    }
+    if (!obj) {
+      obj = {};
+      text.split('&').forEach(function (pair) {
+        if (!pair) return;
+        var i = pair.indexOf('=');
+        if (i < 0) return;
+        obj[safeDecode(pair.slice(0, i))] = safeDecode(pair.slice(i + 1));
+      });
+    }
+    out.yt = String(obj.yt || obj.ytKey || obj.youtube || '').trim();
+    out.gem = String(obj.gem || obj.geminiKey || obj.gemini || '').trim();
+    out.model = String(obj.model || obj.geminiModel || '').trim();
+    return out;
+  };
+
+  function fillKeyInputs() {
+    var yt = document.getElementById('ytKey');
+    var gem = document.getElementById('geminiKey');
+    if (yt) yt.value = settings.ytKey || '';
+    if (gem) gem.value = settings.geminiKey || '';
+  }
+
+  function showSetupNotice() {
+    var n = CAS._setupNotice;
+    if (!n) return null;
+    CAS._setupNotice = null;
+    var names = [n.yt ? 'YouTube' : '', n.gem ? 'Gemini' : ''].filter(Boolean).join(' · ');
+    CAS.toast(names + ' API 키가 자동으로 저장되었습니다!', 4200);
+    CAS.setStatus('settingsStatus', names + ' 키를 자동으로 저장했습니다. 연결 테스트로 확인해 보세요.', 'ok');
+    CAS.setStatus('anaStatus', names + ' 키가 준비됐습니다. 채널 주소를 넣고 분석하기를 누르면 실제 데이터로 분석합니다.', 'ok');
+    fillKeyInputs();
+    updateModePill();
+    document.dispatchEvent(new CustomEvent('cas:settings', { detail: CAS.settings() }));
+    return n;
+  }
+  CAS.showSetupNotice = showSetupNotice;
+
+  /* 해시의 세팅 값을 읽어 저장하고, 해시는 무조건 지운다 */
+  CAS.applySetup = function () {
+    var h = location.hash || '';
+    if (h.indexOf(SETUP_PREFIX) !== 0) return null;
+    var payload = CAS.parseSetup(h.slice(SETUP_PREFIX.length));
+    // 저장 성공 여부와 상관없이 먼저 주소창에서 키를 지운다
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    var patch = {};
+    if (payload.yt) patch.ytKey = payload.yt;
+    if (payload.gem) patch.geminiKey = payload.gem;
+    if (payload.model) patch.model = payload.model;
+    if (!patch.ytKey && !patch.geminiKey) {
+      CAS.toast('세팅 링크에 키가 없습니다 — 링크를 다시 확인해 주세요', 3600);
+      return null;
+    }
+    CAS.saveSettings(patch); // 저장 + 모드 배지 갱신 + cas:settings 이벤트
+    CAS._setupNotice = { yt: !!patch.ytKey, gem: !!patch.geminiKey };
+    if (CAS._booted) showSetupNotice();
+    return CAS._setupNotice;
+  };
+
   /* ---------- 초기화 ---------- */
   CAS.init = function () {
     updateModePill();
@@ -396,6 +492,9 @@
         '안드로이드 크롬: 우측 상단 ⋮ → "앱 설치" 또는 "홈 화면에 추가"\n아이폰 사파리: 하단 공유 → "홈 화면에 추가"', 'ok');
     });
 
+    // 링크로 들어온 원클릭 세팅 안내(입력칸·배지가 갱신된 뒤에 표시)
+    if (CAS._setupNotice) showSetupNotice();
+
     document.addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         var active = document.querySelector('.panel:not(.hidden) .btn.primary');
@@ -450,6 +549,10 @@
     var r = e && e.reason;
     showError((r && (r.message || r)) || '알 수 없는 오류');
   });
+
+  // 링크(#setup=...)가 있으면 부팅 전에 먼저 저장 — init이 갱신된 설정을 읽도록
+  CAS.applySetup();
+  window.addEventListener('hashchange', function () { CAS.applySetup(); });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { if (CAS.boot) CAS.boot(); });

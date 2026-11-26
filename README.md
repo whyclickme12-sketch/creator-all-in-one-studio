@@ -24,6 +24,24 @@
 - YouTube Data API v3 — 하루 10,000 유닛 무료 (분석 1회 ≈ 5~10유닛)
 - Gemini API — Google AI Studio에서 무료 발급
 
+## 원클릭 세팅 링크 (키 자동 저장)
+
+폰에서 키를 붙여넣지 않아도 되도록, 링크 한 번으로 두 키를 `localStorage`에 넣는 기능이 있습니다.
+
+```
+https://whyclickme12-sketch.github.io/creator-all-in-one-studio/#setup=<base64url>
+```
+
+- `#setup=` 뒤에는 `yt=<YouTube 키>&gem=<Gemini 키>`(선택: `&model=<모델명>`)를 담은 문자열을 **base64url**로 인코딩해 넣습니다(평문 쿼리 문자열·JSON도 그대로 인식).
+- 앱이 부팅 전에 값을 읽어 기존 설정에 병합 저장하고, 곧바로 `history.replaceState`로 해시를 지웁니다 → 주소창·방문 기록·공유 링크에 키가 남지 않습니다.
+- 저장 후 상단 모드 배지가 `API 연결됨`으로 바뀌고 "YouTube · Gemini API 키가 자동으로 저장되었습니다!" 토스트가 뜹니다.
+- **키는 저장소 코드·커밋에 넣지 않습니다.** 링크는 키를 가진 사람에게만 직접 전달하세요.
+
+```bash
+# 링크 만들기 (예시)
+python3 -c "import base64;print('https://whyclickme12-sketch.github.io/creator-all-in-one-studio/#setup='+base64.urlsafe_b64encode(b'yt=KEY1&gem=KEY2').decode().rstrip('='))"
+```
+
 ## 프리셋
 
 「헬스랩 1분」은 논문 근거·AI 티 최소화·안전구역 자막 규칙을, 「디투짐 릴스」는 `24시간`·`연중무휴`·`재활` 금지어와 지역 태그를 프롬프트에 자동으로 넣습니다.
