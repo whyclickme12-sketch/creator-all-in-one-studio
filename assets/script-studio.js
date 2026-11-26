@@ -232,6 +232,13 @@
 
   /* ---------- 샘플 대본 ---------- */
   function demo(topic) {
+    var key = CAS.getSetting('preset');
+    if (key === 'jipgo') return demoJipgo(topic);
+    if (key === 'cat4') return demoCat(topic);
+    return demoHealth(topic);
+  }
+
+  function demoHealth(topic) {
     topic = topic || '운동 후 찬물 목욕이 근성장을 방해한다?';
     return {
       titles: [
@@ -276,6 +283,96 @@
       ],
       hashtags: ['#근성장', '#찬물목욕', '#운동회복', '#헬스랩1분', '#논문으로보는운동'],
       factcheck: ['메타분석 참가자 수와 세부 프로토콜은 원문 Table 1에서 재확인 필요', '두 번째 기전 인용은 예시이므로 실제 인용 전 원문 확인']
+    };
+  }
+
+  /* 집 go 샘플 — 가게 이름·가격·영업시간은 만들지 않고 "확인" 자리로 둔다 */
+  function demoJipgo(topic) {
+    topic = topic || '퇴근 후 동네 노포 한잔';
+    return {
+      titles: [
+        topic,
+        '2차 없이 1차에서 끝내는 날',
+        '퇴근길에 발길이 멈춘 간판 하나',
+        '20년째 같은 자리에서 직접 굽는 사장님',
+        '안주 두 개면 충분한 이유'
+      ],
+      thumbnailText: ['오늘은 1차만', '여기서 끝', '퇴근 후 한잔'],
+      hooks: [
+        '오늘은 2차 없이 1차에서 끝내는 날입니다. 그래서 고른 곳이 여기입니다.',
+        '퇴근하고 걷다가 불 켜진 간판 하나에 끌려 들어왔습니다.'
+      ],
+      shorts: {
+        totalSeconds: 40,
+        segments: [
+          { start: 0, end: 4, line: '퇴근하고 걷다가 불 켜진 간판 하나에 끌려 들어왔습니다.', broll: '밤 골목길 1인칭 보행, 간판 클로즈업(실사)', caption: '퇴근길 골목' },
+          { start: 4, end: 10, line: '문 열자마자 나는 냄새. 오늘은 여기서 끝내기로 했습니다.', broll: '문 열고 들어가는 시점, 매장 안쪽과 테이블', caption: '1차 확정' },
+          { start: 10, end: 16, line: '안주는 두 개만 시켰습니다. 계란말이, 그리고 오늘 들어온 생선구이.', broll: '주문 장면, 테이블 위 음식 클로즈업', caption: '안주 두 개' },
+          { start: 16, end: 22, line: '계란말이는 겉은 노릇하고 속은 아직 촉촉합니다. 이 조합에 한잔이면 충분합니다.', broll: '젓가락으로 자르는 클로즈업, 김 올라오는 장면', caption: '겉은 노릇, 속은 촉촉' },
+          { start: 22, end: 28, line: '사장님은 오래 같은 자리에서 직접 굽습니다. 값도 크게 안 올리셨더군요.', broll: '주방에서 굽는 사장님 손, 메뉴판 클로즈업', caption: '같은 자리, 같은 손' },
+          { start: 28, end: 35, line: '2차 생각이 안 나는 건 아니지만, 집에 가서 한잔 더 하면 되니까요.', broll: '빈 접시와 잔, 창밖 골목', caption: '2차는 집에서' },
+          { start: 35, end: 40, line: '돌고 돌아 결국 가는 곳은, 2차도 3차도 아닌 내 집입니다. 오늘도 잘 먹고, 집 go!', broll: '가게 문 닫고 나오는 뒷모습, 집 앞 골목', caption: '집 go' }
+        ]
+      },
+      longform: {
+        totalSeconds: 180,
+        sections: [
+          { start: 0, end: 16, line: '퇴근 후 한잔은 대개 2차로 흘러갑니다. 오늘은 그 흐름을 한 번 끊어보려고 이 집을 골랐습니다.', broll: '골목 입구 → 간판 → 문 여는 장면', caption: '인트로' },
+          { start: 16, end: 52, line: '이 집은 오래 같은 자리에 있었습니다. 테이블은 몇 개 안 되고, 주방은 사장님 혼자입니다.', broll: '외관·간판·테이블 배치·주방 실사', caption: '가게 소개' },
+          { start: 52, end: 88, line: '주문은 두 가지로 줄였습니다. 안주를 늘리면 맛이 기억에 안 남더군요.', broll: '주문, 서빙, 잔 따르는 장면', caption: '주문' },
+          { start: 88, end: 124, line: '계란말이는 겉이 노릇하고 속은 촉촉합니다. 생선구이는 간이 세지 않아서 술이 천천히 들어갑니다.', broll: '음식 클로즈업, 젓가락질, 김 오르는 장면', caption: '맛' },
+          { start: 124, end: 156, line: '가격과 영업시간은 매장에서 확인한 값만 적습니다. 이 대본에서는 확인 자리로 비워 둡니다.', broll: '메뉴판과 영업시간 안내판 클로즈업', caption: '가격·영업시간 확인 후' },
+          { start: 156, end: 180, line: '돌고 돌아 결국 가는 곳은, 2차도 3차도 아닌 내 집입니다. 오늘도 잘 먹고, 집 go!', broll: '가게 앞에서 집 쪽으로 걷는 골목', caption: '집 go' }
+        ]
+      },
+      citations: [],
+      hashtags: CAS.preset().tags || [],
+      factcheck: ['가게 이름·위치·가격·영업시간은 방문 확인 후 채우기', '사장님 인터뷰 문장은 실제 발언으로 교체']
+    };
+  }
+
+  /* 고양이 샘플 — 무거운 단어 없이 가벼운 일상만 */
+  function demoCat(topic) {
+    topic = topic || '새벽 4시 츄르 소동';
+    return {
+      titles: [
+        topic,
+        '새벽 4시, 넷째가 먼저 일어났습니다',
+        '츄르 봉지 소리에 네 마리가 다 왔습니다',
+        '다묘집사가 새벽에 하는 일',
+        '우리 집 고양이는 순서가 정해져 있습니다'
+      ],
+      thumbnailText: ['새벽 4시', '넷 다 모였다', '순서는 정해져 있음'],
+      hooks: [
+        '새벽 4시에 작은 발소리 하나로 시작됩니다. 그다음은 늘 정해져 있습니다.',
+        '츄르 봉지 뜯는 소리만 나도 네 마리가 같은 방향을 봅니다.'
+      ],
+      shorts: {
+        totalSeconds: 40,
+        segments: [
+          { start: 0, end: 4, line: '새벽 4시. 넷째가 제 배 위에서 먼저 일어납니다.', broll: '어두운 침실, 이불 위를 걷는 고양이(실사)', caption: '새벽 4시' },
+          { start: 4, end: 9, line: '그 소리에 둘째가 깨고, 첫째는 이미 문 앞에 앉아 있습니다.', broll: '문 앞에 앉은 고양이, 복도 불빛', caption: '이미 문 앞' },
+          { start: 9, end: 15, line: '츄르 봉지 뜯는 소리, 이건 숨길 수가 없습니다.', broll: '서랍에서 츄르 꺼내는 손, 봉지 클로즈업', caption: '이건 못 숨김' },
+          { start: 15, end: 21, line: '셋째는 안 왔습니다. 부르면 올 때도 있고, 아닐 때도 있습니다.', broll: '빈 방 문가, 다른 방에서 자는 고양이', caption: '셋째는 안 옴' },
+          { start: 21, end: 27, line: '먹는 순서는 늘 같습니다. 첫째, 둘째, 넷째, 그러고 나서 셋째.', broll: '나란히 먹는 네 마리 클로즈업', caption: '순서는 정해져 있음' },
+          { start: 27, end: 34, line: '다 먹고 나면 아무 일 없었다는 얼굴로 흩어집니다.', broll: '각자 자리로 흩어지는 모습', caption: '끝' },
+          { start: 34, end: 40, line: '이 40초를 위해 집사는 새벽에 일어납니다.', broll: '다시 이불 속으로 들어가는 고양이', caption: '집사의 하루' }
+        ]
+      },
+      longform: {
+        totalSeconds: 180,
+        sections: [
+          { start: 0, end: 14, line: '네 마리와 사는 집의 새벽은 조용하지 않습니다. 오늘 새벽도 츄르 하나로 시작됐습니다.', broll: '어두운 집 안, 창밖 새벽빛', caption: '인트로' },
+          { start: 14, end: 52, line: '먼저 네 마리 소개입니다. 첫째는 조용하고, 둘째는 제일 먼저 달려오고, 셋째는 자기 페이스, 넷째는 새벽 담당입니다.', broll: '네 마리 각자 클로즈업, 이름 자막', caption: '네 마리 소개' },
+          { start: 52, end: 90, line: '새벽 츄르는 원래 넷째 간식이었는데, 어느 순간 다 같이 먹는 시간이 됐습니다.', broll: '츄르 꺼내는 손, 몰려드는 장면', caption: '새벽 츄르' },
+          { start: 90, end: 128, line: '먹는 순서와 자리는 그들끼리 정해져 있습니다. 사람이 바꾸려 해도 잘 안 바뀝니다.', broll: '밥자리 배치, 순서대로 먹는 모습', caption: '순서와 자리' },
+          { start: 128, end: 160, line: '다묘집사 팁 하나. 물그릇은 방마다, 화장실은 마리 수보다 하나 더 두면 새벽 소동이 줄어듭니다.', broll: '방마다 놓인 물그릇과 화장실', caption: '다묘집사 팁' },
+          { start: 160, end: 180, line: '오늘도 츄르 하나로 시작해서, 츄르 하나로 끝난 새벽이었습니다.', broll: '다시 잠든 네 마리, 이불 위', caption: '마무리' }
+        ]
+      },
+      citations: [],
+      hashtags: CAS.preset().tags || [],
+      factcheck: ['고양이 이름·성격·순서는 실제 관찰대로 채우기', '츄르·간식 양은 수의사 권장량 확인 후 표기']
     };
   }
 
@@ -354,7 +451,11 @@
 
       if (btn) btn.addEventListener('click', run);
       if (demoBtn) demoBtn.addEventListener('click', function () {
-        state.topic = (topicEl.value || '운동 후 찬물 목욕이 근성장을 방해한다?').trim();
+        var pk = CAS.getSetting('preset');
+        var dflt = pk === 'jipgo' ? '퇴근 후 동네 노포 한잔'
+          : pk === 'cat4' ? '새벽 4시 츄르 소동'
+          : '운동 후 찬물 목욕이 근성장을 방해한다?';
+        state.topic = (topicEl.value || dflt).trim();
         render(demo(state.topic), { demo: true, note: '샘플 대본입니다.' });
         CAS.setStatus(status, '샘플 대본을 채웠습니다.', '');
       });
