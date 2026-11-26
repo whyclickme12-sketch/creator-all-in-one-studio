@@ -100,7 +100,7 @@
     html += '<div class="card">';
     html += '<div class="chan-head">';
     html += c.avatar ? '<img class="chan-avatar" src="' + CAS.esc(c.avatar) + '" alt="" referrerpolicy="no-referrer" />'
-      : '<div class="chan-avatar"></div>';
+      : '<div class="chan-avatar chan-initial">' + CAS.esc(String(c.title || '?').slice(0, 1)) + '</div>';
     html += '<div style="min-width:0"><div class="chan-name">' + CAS.esc(c.title) + '</div>';
     html += '<div class="chan-meta">' + CAS.esc(c.handle || '') + (c.country ? ' · ' + CAS.esc(c.country) : '') + '</div></div>';
     html += '</div>';
