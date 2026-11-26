@@ -22,7 +22,7 @@
         navigator.serviceWorker.register('sw.js').catch(function () {});
       }
     });
-    console.log('올인원 유튜브 스튜디오 준비 완료 · v1.0.14');
+    console.log('올인원 유튜브 스튜디오 준비 완료 · v1.0.15');
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', CAS.boot);

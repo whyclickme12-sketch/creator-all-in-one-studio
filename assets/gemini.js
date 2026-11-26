@@ -128,7 +128,7 @@
       var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
       function attempt(i) {
         return generate(order[i], system, userPrompt, gen).catch(function (e) {
-          var retryable = e.status === 404 || (e.status === 400 && /model|thinking/i.test(e.message || ''));
+          var retryable = e.status === 404 || e.status === 429 || e.status === 503 || (e.status === 400 && /model|thinking/i.test(e.message || ''));
           if (retryable && i < order.length - 1) return attempt(i + 1);
           throw e;
         });
@@ -149,7 +149,7 @@
       var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
       function attempt(i) {
         return generate(order[i], instruction, userPrompt, gen).catch(function (e) {
-          var retryable = e.status === 404 || (e.status === 400 && /model|response|thinking/i.test(e.message || ''));
+          var retryable = e.status === 404 || e.status === 429 || e.status === 503 || (e.status === 400 && /model|response|thinking/i.test(e.message || ''));
           if (retryable && i < order.length - 1) return attempt(i + 1);
           throw e;
         });
