@@ -1,0 +1,9 @@
+# 렌더 워커
+worker/jobs/
+worker/.venv/
+__pycache__/
+*.pyc
+
+# OS / 편집기
+.DS_Store
+Thumbs.db

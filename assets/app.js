@@ -1,0 +1,421 @@
+/* core: 저장소 · 설정 · 탭 · 공용 유틸 */
+(function () {
+  'use strict';
+
+  var NS = 'cas.'; // creator all-in-one studio
+
+  var store = {
+    get: function (key, fallback) {
+      try {
+        var raw = localStorage.getItem(NS + key);
+        if (raw === null) return fallback;
+        return JSON.parse(raw);
+      } catch (e) { return fallback; }
+    },
+    set: function (key, value) {
+      try { localStorage.setItem(NS + key, JSON.stringify(value)); return true; }
+      catch (e) { CAS.toast('저장 공간이 부족해 저장하지 못했어요'); return false; }
+    },
+    remove: function (key) {
+      try { localStorage.removeItem(NS + key); } catch (e) {}
+    }
+  };
+
+  var PRESETS = {
+    healthlab: {
+      label: '헬스랩 1분',
+      summary: '논문 근거 · AI 티 최소화 · 35~40초 쇼츠 + 3분 롱폼',
+      style: [
+        '채널: 「헬스랩 1분」 — 운동·영양 논문을 1분 안에 정리하는 한국어 채널.',
+        '톤: 차분한 남자 다큐 내레이션. 과장 없이 사실 위주, 시청자를 "여러분"으로 부른다.',
+        '구조: 첫 3초에 통념을 뒤집는 질문 → 논문 수치 → 실전 적용 한 줄 → 저장/구독 유도.',
+        '자막: 상단 2줄 빅 타이틀(흰색 + 노랑 #FFD400), 다크 X-ray/MRI 톤 이미지, 하단 자막은 안전구역(y 1209~1338, 우측 아이콘 열 x≥940 회피).',
+        '근거: 모든 수치에 저자·연도·학술지(가능하면 DOI)를 붙이고, 동물실험이면 사람 연구와 구분해 표기한다.',
+        'B-roll: 반짝이는 3D CG 대신 논문 도표·Forest plot·확률 게이지 같은 인포그래픽을 지시한다.'
+      ].join('\n'),
+      ban: ['무조건', '100%', '완치', '부작용 없음', '최고', '다이어트 보장', '기적', '특효'],
+      formats: { shorts: 40, longform: 180 }
+    },
+    d2gym: {
+      label: '디투짐 릴스',
+      summary: '탕정 헬스장 홍보 · 금지어 자동 회피 · 지역 태그',
+      style: [
+        '채널: 충남 아산 탕정 「디투짐」(@d2gym_official) 인스타 릴스 / 네이버 블로그.',
+        '톤: 사장님이 회원에게 직접 말하듯 친근하고 담백하게. 전문 용어는 한 번 풀어서 쓴다.',
+        '소재: 운동역학·기능해부학 릴스를 기준으로, 매장 자랑보다 "왜 이 동작이 이렇게 되어야 하는지"를 먼저 보여준다.',
+        '영업시간 표기는 항상 05:00 - 24:00. 매장은 아산 탕정(브라운스톤갤럭시 2층).',
+        '지역 태그 후보: #탕정헬스장 #탕정PT #아산PT #아산헬스장 #탕정브라운스톤'
+      ].join('\n'),
+      ban: ['24시간', '연중무휴', '재활', '한강'],
+      formats: { shorts: 30, longform: 90 }
+    },
+    general: {
+      label: '일반 유튜브',
+      summary: '범용 후킹 구조 · 담백한 말투',
+      style: [
+        '톤: 담백하고 또렷한 한국어 해설. 유행어·과장 없이 사실과 예시로 말한다.',
+        '구조: 첫 3초 후킹 → 문제 제기 → 근거 2~3개 → 정리 → 다음 행동 유도.',
+        '자막은 짧은 어절 단위로 끊고, 화면에는 핵심 숫자만 크게 남긴다.'
+      ].join('\n'),
+      ban: [],
+      formats: { shorts: 40, longform: 180 }
+    }
+  };
+
+  var defaults = {
+    ytKey: '',
+    geminiKey: '',
+    model: 'gemini-2.5-flash',
+    preset: 'healthlab',
+    workerUrl: '',
+    lastTab: 'analyzer'
+  };
+
+  var settings = Object.assign({}, defaults, store.get('settings', {}));
+
+  var CAS = window.CAS = window.CAS || {};
+  CAS.store = store;
+  CAS.presets = PRESETS;
+  CAS.settings = function () { return Object.assign({}, settings); };
+  CAS.getSetting = function (key) { return settings[key]; };
+  CAS.saveSettings = function (patch) {
+    Object.assign(settings, patch || {});
+    store.set('settings', settings);
+    updateModePill();
+    document.dispatchEvent(new CustomEvent('cas:settings', { detail: CAS.settings() }));
+    return CAS.settings();
+  };
+  CAS.hasYt = function () { return !!String(settings.ytKey || '').trim(); };
+  CAS.hasGemini = function () { return !!String(settings.geminiKey || '').trim(); };
+  CAS.preset = function () { return PRESETS[settings.preset] || PRESETS.general; };
+
+  /* ---------- text helpers ---------- */
+  CAS.esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+
+  CAS.num = function (n) {
+    n = Number(n || 0);
+    if (n >= 100000000) return (n / 100000000).toFixed(n >= 1000000000 ? 1 : 2).replace(/\.0+$/, '') + '억';
+    if (n >= 10000) return (n / 10000).toFixed(n >= 100000 ? 1 : 2).replace(/\.0+$/, '') + '만';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + '천';
+    return String(Math.round(n));
+  };
+
+  CAS.time = function (sec) {
+    sec = Math.max(0, Number(sec || 0));
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  };
+
+  CAS.srtTime = function (sec) {
+    sec = Math.max(0, Number(sec || 0));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = Math.floor(sec % 60);
+    var ms = Math.round((sec - Math.floor(sec)) * 1000);
+    if (ms === 1000) { ms = 0; s += 1; }
+    function p(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+    return p(h, 2) + ':' + p(m, 2) + ':' + p(s, 2) + ',' + p(ms, 3);
+  };
+
+  CAS.toast = function (msg, ms) {
+    var el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(CAS.toast._t);
+    CAS.toast._t = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
+  };
+
+  CAS.copy = function (text, label) {
+    function done() { CAS.toast((label || '복사') + ' 완료'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { legacy(); });
+    } else { legacy(); }
+    function legacy() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { CAS.toast('복사 실패 — 길게 눌러 선택하세요'); }
+      document.body.removeChild(ta);
+    }
+  };
+
+  CAS.download = function (filename, content, mime) {
+    var blob = content instanceof Blob ? content : new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+  };
+
+  CAS.setStatus = function (el, msg, kind) {
+    if (!el) return;
+    if (typeof el === 'string') el = document.getElementById(el);
+    if (!el) return;
+    el.className = 'status' + (kind ? ' ' + kind : '') + (kind === 'busy' ? ' busy' : '');
+    el.textContent = msg || '';
+  };
+
+  CAS.busy = function (btn, on) {
+    if (!btn) return;
+    if (on) { btn.dataset.prev = btn.disabled ? '1' : '0'; btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+    else { btn.disabled = btn.dataset.prev === '1'; btn.removeAttribute('aria-busy'); }
+  };
+
+  /* ---------- 탭 라우팅 ---------- */
+  var TABS = ['analyzer', 'script', 'thumb', 'cut', 'settings'];
+  var TITLES = {
+    analyzer: '채널 · 영상 분석기',
+    script: 'AI 기획 · 대본 스튜디오',
+    thumb: '썸네일 · 카드뉴스 · 포스팅',
+    cut: '자동 컷편집기',
+    settings: '설정 · API 연결'
+  };
+
+  CAS.go = function (tab, silent) {
+    if (TABS.indexOf(tab) < 0) tab = 'analyzer';
+    TABS.forEach(function (t) {
+      var panel = document.getElementById('panel-' + t);
+      if (panel) panel.classList.toggle('hidden', t !== tab);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#tabbar .tab'), function (b) {
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    var sub = document.getElementById('topbarSub');
+    if (sub) sub.textContent = TITLES[tab] || '';
+    if (!silent) {
+      try { history.replaceState(null, '', '#' + tab); } catch (e) {}
+      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    }
+    settings.lastTab = tab;
+    store.set('settings', settings);
+    document.dispatchEvent(new CustomEvent('cas:tab', { detail: tab }));
+  };
+
+  function updateModePill() {
+    var pill = document.getElementById('modePill');
+    if (!pill) return;
+    var yt = CAS.hasYt(), g = CAS.hasGemini();
+    if (yt && g) { pill.textContent = 'API 연결됨'; pill.classList.add('live'); }
+    else if (yt || g) { pill.textContent = yt ? 'YouTube 연결' : 'Gemini 연결'; pill.classList.add('live'); }
+    else { pill.textContent = '데모'; pill.classList.remove('live'); }
+  }
+
+  /* ---------- markdown-lite ---------- */
+  CAS.md = function (text) {
+    var esc = CAS.esc(text || '');
+    var lines = esc.split(/\r?\n/);
+    var out = [], list = null, para = [];
+    function flushPara() {
+      if (para.length) { out.push('<p>' + inline(para.join('<br>')) + '</p>'); para = []; }
+    }
+    function flushList() {
+      if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+    }
+    function inline(s) {
+      return s
+        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i];
+      var line = raw.trim();
+      if (!line) { flushPara(); flushList(); continue; }
+      if (/^#{1,4}\s+/.test(line)) { flushPara(); flushList(); out.push('<h4>' + inline(line.replace(/^#{1,4}\s+/, '')) + '</h4>'); continue; }
+      if (/^[-•*]\s+/.test(line)) { flushPara(); list = list || []; list.push('<li>' + inline(line.replace(/^[-•*]\s+/, '')) + '</li>'); continue; }
+      if (/^\d+[.)]\s+/.test(line)) { flushPara(); list = list || []; list.push('<li>' + inline(line.replace(/^\d+[.)]\s+/, '')) + '</li>'); continue; }
+      flushList();
+      para.push(line);
+    }
+    flushPara(); flushList();
+    return out.join('');
+  };
+
+  /* ---------- block renderer ---------- */
+  CAS.block = function (title, text, opts) {
+    opts = opts || {};
+    var id = 'blk' + Math.random().toString(36).slice(2, 8);
+    var html = '<div class="block">' +
+      '<div class="block-head"><b>' + CAS.esc(title) + '</b>' +
+      '<button class="btn tiny ghost" type="button" data-copy="' + id + '">복사</button></div>' +
+      '<pre id="' + id + '">' + CAS.esc(text) + '</pre></div>';
+    CAS._blocks = CAS._blocks || {};
+    CAS._blocks[id] = text;
+    return html;
+  };
+
+  CAS.bindCopy = function (root) {
+    (root || document).querySelectorAll('[data-copy]').forEach(function (btn) {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-copy');
+        var text = (CAS._blocks && CAS._blocks[id]) || (document.getElementById(id) || {}).textContent || '';
+        CAS.copy(text, btn.getAttribute('data-label') || '복사');
+      });
+    });
+  };
+
+  /* ---------- 초기화 ---------- */
+  CAS.init = function () {
+    updateModePill();
+
+    // 탭
+    Array.prototype.forEach.call(document.querySelectorAll('#tabbar .tab'), function (b) {
+      b.addEventListener('click', function () { CAS.go(b.dataset.tab); });
+    });
+    var initial = (location.hash || '').replace('#', '');
+    CAS.go(TABS.indexOf(initial) >= 0 ? initial : (settings.lastTab || 'analyzer'), true);
+
+    var pill = document.getElementById('modePill');
+    if (pill) pill.addEventListener('click', function () { CAS.go('settings'); });
+
+    // 설정 화면
+    var ytKey = document.getElementById('ytKey');
+    var geminiKey = document.getElementById('geminiKey');
+    var modelSel = document.getElementById('geminiModel');
+    var worker = document.getElementById('workerUrl');
+    if (ytKey) ytKey.value = settings.ytKey || '';
+    if (geminiKey) geminiKey.value = settings.geminiKey || '';
+    if (modelSel) modelSel.value = settings.model || 'gemini-2.5-flash';
+    if (worker) worker.value = settings.workerUrl || '';
+
+    var saveBtn = document.getElementById('btnSaveKeys');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      CAS.saveSettings({
+        ytKey: (ytKey.value || '').trim(),
+        geminiKey: (geminiKey.value || '').trim(),
+        model: modelSel.value,
+        workerUrl: (worker.value || '').trim().replace(/\/+$/, '')
+      });
+      CAS.setStatus('settingsStatus', '저장했습니다. 분석·대본 탭에서 바로 쓸 수 있어요.', 'ok');
+      CAS.toast('설정 저장됨');
+    });
+
+    var clearBtn = document.getElementById('btnClearKeys');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      CAS.saveSettings({ ytKey: '', geminiKey: '' });
+      if (ytKey) ytKey.value = '';
+      if (geminiKey) geminiKey.value = '';
+      CAS.setStatus('settingsStatus', '키를 지웠습니다. 데모 모드로 동작합니다.', 'ok');
+    });
+
+    var testYt = document.getElementById('btnTestYt');
+    if (testYt) testYt.addEventListener('click', function () {
+      var key = (ytKey.value || '').trim();
+      if (!key) { CAS.setStatus('ytKeyStatus', '키를 먼저 입력하세요.', 'err'); return; }
+      CAS.setStatus('ytKeyStatus', '확인 중…', 'busy');
+      CAS.youtube.testKey(key).then(function (ok) {
+        CAS.setStatus('ytKeyStatus', ok ? '정상 동작합니다' : '키가 거부되었습니다(사용 설정 확인)', ok ? 'ok' : 'err');
+      }).catch(function (e) {
+        CAS.setStatus('ytKeyStatus', CAS.errText(e), 'err');
+      });
+    });
+
+    var testG = document.getElementById('btnTestGemini');
+    if (testG) testG.addEventListener('click', function () {
+      var key = (geminiKey.value || '').trim();
+      if (!key) { CAS.setStatus('geminiKeyStatus', '키를 먼저 입력하세요.', 'err'); return; }
+      CAS.setStatus('geminiKeyStatus', '확인 중…', 'busy');
+      CAS.gemini.testKey(key, modelSel.value).then(function (ok) {
+        CAS.setStatus('geminiKeyStatus', ok ? '정상 동작합니다' : '키가 거부되었습니다', ok ? 'ok' : 'err');
+      }).catch(function (e) {
+        CAS.setStatus('geminiKeyStatus', CAS.errText(e), 'err');
+      });
+    });
+
+    // 프리셋
+    var radios = document.querySelectorAll('input[name="preset"]');
+    Array.prototype.forEach.call(radios, function (r) {
+      r.checked = (r.value === settings.preset);
+      r.addEventListener('change', function () {
+        if (!r.checked) return;
+        CAS.saveSettings({ preset: r.value });
+        renderPresetNote();
+        CAS.toast(CAS.preset().label + ' 프리셋 적용');
+      });
+    });
+    renderPresetNote();
+
+    var exp = document.getElementById('btnExportAll');
+    if (exp) exp.addEventListener('click', function () {
+      var copy = Object.assign({}, settings, { ytKey: settings.ytKey ? '(저장됨)' : '', geminiKey: settings.geminiKey ? '(저장됨)' : '' });
+      CAS.download('creator-studio-settings.json', JSON.stringify(copy, null, 2), 'application/json');
+      CAS.toast('설정 내보내기(키 제외)');
+    });
+
+    var inst = document.getElementById('btnInstallHelp');
+    if (inst) inst.addEventListener('click', function () {
+      CAS.setStatus('installStatus',
+        '안드로이드 크롬: 우측 상단 ⋮ → "앱 설치" 또는 "홈 화면에 추가"\n아이폰 사파리: 하단 공유 → "홈 화면에 추가"', 'ok');
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        var active = document.querySelector('.panel:not(.hidden) .btn.primary');
+        if (active && !active.disabled) active.click();
+      }
+    });
+  };
+
+  function renderPresetNote() {
+    var p = CAS.preset();
+    var note = document.getElementById('presetNote');
+    if (!note) return;
+    var text = p.summary;
+    if (p.ban && p.ban.length) text += ' · 금지어: ' + p.ban.join(', ');
+    note.textContent = text;
+  }
+  CAS.renderPresetNote = renderPresetNote;
+
+  CAS.errText = function (e) {
+    if (!e) return '알 수 없는 오류';
+    if (e.name === 'TypeError' || /Failed to fetch|NetworkError/i.test(e.message || '')) {
+      return '네트워크 오류 — 인터넷 연결이나 API 키 제한(HTTP 리퍼러)을 확인하세요.';
+    }
+    return e.message || String(e);
+  };
+
+  CAS.setting = function (k) { return settings[k]; };
+  CAS.defaults = defaults;
+  CAS._blocks = CAS._blocks || {};
+
+  /* 화면에 보이는 오류 배너 — 검증·사용 중 문제를 숨기지 않는다 */
+  function showError(text) {
+    var bar = document.getElementById('jsErrorBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'jsErrorBar';
+      bar.style.cssText = 'position:fixed;left:8px;right:8px;bottom:calc(var(--tab-h) + 12px);z-index:80;' +
+        'background:#3a1218;border:1px solid #ff6b6b;color:#ffd7d7;border-radius:12px;padding:10px 12px;' +
+        'font-size:12px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+      bar.addEventListener('click', function () { bar.remove(); });
+      document.body.appendChild(bar);
+    }
+    bar.textContent = '⚠ ' + text + ' (탭하면 닫힘)';
+  }
+  CAS.showError = showError;
+  window.addEventListener('error', function (e) {
+    if (!e || !e.message) return;
+    showError(e.message + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    showError((r && (r.message || r)) || '알 수 없는 오류');
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { if (CAS.boot) CAS.boot(); });
+  }
+})();

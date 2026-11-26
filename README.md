@@ -1,0 +1,61 @@
+# 🎬 올인원 유튜브 스튜디오 (creator-all-in-one-studio)
+
+채널 분석 · AI 대본 · 썸네일 · 자동 컷편집을 **한 화면**에서.
+모바일 브라우저에서 홈 화면에 추가해 앱처럼 쓰는 **PWA 정적 웹앱**입니다. 서버가 없고, API 키는 브라우저에만 저장됩니다.
+
+- 앱: **https://whyclickme12-sketch.github.io/creator-all-in-one-studio/**
+- 렌더 워커(선택): [`worker/`](worker/) — Python + FFmpeg + Faster-Whisper
+
+## 탭 구성
+
+| 탭 | 하는 일 |
+|---|---|
+| 📊 **분석** | 채널 URL(@핸들)·영상 URL → 구독자·총 조회수·최근 영상·요일/시간대 분포·쇼츠 vs 롱폼 → Gemini 리포트(후킹 전략·제목 패턴·벤치마킹) |
+| ✍️ **기획** | 주제 한 줄 → 제목 5안 · 썸네일 문구 · 40초 쇼츠 / 3분 롱폼 **초 단위 대본**(화면 지시·자막 포함) · SRT/TXT 저장 |
+| 🖼️ **썸네일** | 콘셉트 3안 + 영어 이미지 프롬프트 · 커뮤니티/인스타/스레드 캡션·해시태그 · **Canvas 카드 편집기**(16:9·1:1·9:16 → PNG) |
+| ✂️ **컷편집** | 영상/오디오 무음 자동 감지(Web Audio) · 9:16/16:9 프리뷰 · 컷 타임라인 · 자막 초안 SRT · **원격 워커로 MP4 렌더** |
+| ⚙️ **설정** | YouTube Data API v3 키 · Gemini API 키(localStorage) · 채널 프리셋(헬스랩 1분 / 디투짐 릴스 / 일반) |
+
+## 키 없이도 전부 체험
+
+키가 없으면 **샘플 데이터**로 모든 화면이 채워지고, AI가 만들 프롬프트를 **복사**해 ChatGPT·Claude·Gemini 웹에 붙여 쓸 수 있습니다.
+키 발급은 각각 5분이면 됩니다(설정 탭에 링크 있음):
+
+- YouTube Data API v3 — 하루 10,000 유닛 무료 (분석 1회 ≈ 5~10유닛)
+- Gemini API — Google AI Studio에서 무료 발급
+
+## 프리셋
+
+「헬스랩 1분」은 논문 근거·AI 티 최소화·안전구역 자막 규칙을, 「디투짐 릴스」는 `24시간`·`연중무휴`·`재활` 금지어와 지역 태그를 프롬프트에 자동으로 넣습니다.
+
+## 홈 화면에 추가
+
+- **안드로이드 크롬**: ⋮ → 앱 설치 / 홈 화면에 추가
+- **아이폰 사파리**: 공유 → 홈 화면에 추가
+
+## 구조
+
+```
+index.html                 앱 셸 (5개 패널 + 하단 탭)
+manifest.webmanifest       PWA 매니페스트
+sw.js                      앱 셸 오프라인 캐시
+assets/app.css             모바일 퍼스트 스타일
+assets/app.js              저장소·설정·탭·공용 유틸
+assets/youtube.js          YouTube Data API 파싱·조회·지표 계산
+assets/gemini.js           Gemini 호출·JSON 파싱·모델 폴백
+assets/analyzer.js         탭1 렌더 + AI 리포트
+assets/script-studio.js    탭2 대본 생성·SRT/TXT
+assets/thumbnail-studio.js 탭3 콘셉트·캡션 + Canvas 편집기
+assets/cut-editor.js       탭4 무음 감지·타임라인·워커 렌더
+worker/                    선택: 원격 렌더 서버(FFmpeg + Whisper)
+```
+
+## 개인정보
+
+- API 키와 설정은 `localStorage`에만 있고 어떤 서버로도 보내지 않습니다.
+- 영상 파일은 **워커를 직접 설정한 경우에만** 그 워커로 전송됩니다(기본은 100% 기기 안에서 처리).
+- 렌더 워커는 결과물을 `worker/jobs/`에 두고 24시간 뒤 자동 삭제합니다.
+
+## 라이선스
+
+개인용으로 만든 도구입니다. 자유롭게 고쳐 쓰세요.

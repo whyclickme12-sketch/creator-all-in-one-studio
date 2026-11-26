@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0d10" />
+<meta name="description" content="채널 분석 · 대본 · 썸네일 · 자동 컷편집을 한 화면에서. 모바일 퍼스트 올인원 유튜브 스튜디오." />
+<title>올인원 유튜브 스튜디오</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">▶</div>
+      <div>
+        <div class="topbar-title">올인원 유튜브 스튜디오</div>
+        <div class="topbar-sub" id="topbarSub">분석 · 대본 · 썸네일 · 컷편집</div>
+      </div>
+    </div>
+    <button class="pill" id="modePill" type="button" title="데모/API 모드">데모</button>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ TAB 1: 채널·영상 분석기 ============ -->
+    <section class="panel" id="panel-analyzer" data-panel="analyzer">
+      <div class="card">
+        <h2 class="card-title">채널 · 영상 분석</h2>
+        <p class="muted">채널 URL(@핸들), 채널 ID, 영상·쇼츠 URL을 넣으면 실제 데이터로 분석합니다.</p>
+        <div class="field">
+          <label for="anaInput">채널 또는 영상 주소</label>
+          <input id="anaInput" type="url" inputmode="url" autocomplete="off"
+                 placeholder="https://www.youtube.com/@healthlab_1min" />
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnAnalyze" type="button">분석하기</button>
+          <button class="btn ghost" id="btnAnalyzeDemo" type="button">샘플로 보기</button>
+        </div>
+        <div class="status" id="anaStatus"></div>
+      </div>
+
+      <div id="anaResult" class="hidden"></div>
+    </section>
+
+    <!-- ============ TAB 2: AI 기획·대본 스튜디오 ============ -->
+    <section class="panel hidden" id="panel-script" data-panel="script">
+      <div class="card">
+        <h2 class="card-title">AI 기획 · 대본</h2>
+        <p class="muted">주제 한 줄이면 제목 5안 · 썸네일 문구 · 초 단위 대본까지. 레퍼런스 대본/URL을 붙이면 그 구조를 참고합니다.</p>
+        <div class="field">
+          <label for="scTopic">주제 / 키워드</label>
+          <input id="scTopic" type="text" placeholder="예: 운동 후 찬물 목욕이 근성장을 방해한다?" />
+        </div>
+        <div class="field">
+          <label for="scRef">레퍼런스 대본 · 영상 URL (선택)</label>
+          <textarea id="scRef" rows="3" placeholder="경쟁 채널 대본을 붙여넣거나 영상 URL을 넣어 주세요."></textarea>
+        </div>
+        <div class="field">
+          <label>포맷</label>
+          <div class="chips" id="scFormat">
+            <button class="chip active" type="button" data-format="both">쇼츠 40초 + 롱폼 3분</button>
+            <button class="chip" type="button" data-format="shorts">쇼츠 40초</button>
+            <button class="chip" type="button" data-format="longform">롱폼 3분</button>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnGenerate" type="button">대본 만들기</button>
+          <button class="btn ghost" id="btnGenerateDemo" type="button">샘플 대본</button>
+        </div>
+        <div class="status" id="scStatus"></div>
+      </div>
+      <div id="scResult" class="hidden"></div>
+    </section>
+
+    <!-- ============ TAB 3: 썸네일·카드뉴스·포스팅 ============ -->
+    <section class="panel hidden" id="panel-thumb" data-panel="thumb">
+      <div class="card">
+        <h2 class="card-title">썸네일 · 카드뉴스 · 포스팅</h2>
+        <p class="muted">콘셉트 3안과 이미지 프롬프트, 채널별 캡션·해시태그. 아래 편집기로 카드 이미지를 바로 만들어 저장할 수 있습니다.</p>
+        <div class="field">
+          <label for="thTopic">주제 / 영상 제목</label>
+          <input id="thTopic" type="text" placeholder="예: 하룻밤 밤새면 근성장 18% 증발?" />
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnThGenerate" type="button">콘셉트 · 캡션 만들기</button>
+          <button class="btn ghost" id="btnThDemo" type="button">샘플</button>
+        </div>
+        <div class="status" id="thStatus"></div>
+      </div>
+
+      <div id="thResult" class="hidden"></div>
+
+      <div class="card">
+        <h2 class="card-title">텍스트 카드 편집기</h2>
+        <p class="muted">유튜브 썸네일(16:9) · 인스타 카드(1:1) · 쇼츠 커버(9:16)를 브라우저에서 바로 만들고 PNG로 저장합니다.</p>
+        <div class="canvas-stage">
+          <canvas id="cardCanvas" width="1280" height="720"></canvas>
+        </div>
+        <div class="field">
+          <label for="cardSize">비율</label>
+          <select id="cardSize">
+            <option value="1280x720">유튜브 썸네일 16:9 · 1280×720</option>
+            <option value="1080x1080">인스타 카드 1:1 · 1080×1080</option>
+            <option value="1080x1920">쇼츠 커버 9:16 · 1080×1920</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cardTitle">메인 문구 (최대 2줄)</label>
+          <textarea id="cardTitle" rows="2" placeholder="하룻밤 밤새면&#10;근성장 18% 증발?"></textarea>
+        </div>
+        <div class="field">
+          <label for="cardSub">보조 문구</label>
+          <input id="cardSub" type="text" placeholder="Lamon et al. 2021 · Physiol Rep" />
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="cardAccent">강조색</label>
+            <input id="cardAccent" type="color" value="#ffd400" />
+          </div>
+          <div class="field">
+            <label for="cardTheme">테마</label>
+            <select id="cardTheme">
+              <option value="xray">다크 X-ray</option>
+              <option value="paper">논문 화이트</option>
+              <option value="ink">잉크 블루</option>
+              <option value="alert">경고 레드</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnDownloadCard" type="button">PNG 저장</button>
+          <button class="btn ghost" id="btnCardFromResult" type="button">생성 결과 문구 적용</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TAB 4: 자동 컷편집기 ============ -->
+    <section class="panel hidden" id="panel-cut" data-panel="cut">
+      <div class="card">
+        <h2 class="card-title">자동 컷편집기</h2>
+        <p class="muted">영상·오디오를 올리면 무음 구간을 찾아 컷 타임라인과 자막 초안을 만듭니다. 모든 처리는 폰 안에서 이뤄지고 파일은 어디로도 전송되지 않습니다.</p>
+        <div class="dropzone" id="cutDrop">
+          <input type="file" id="cutFile" accept="video/*,audio/*" hidden />
+          <strong>영상 · 오디오 선택</strong>
+          <span class="muted">MP4 · MOV · MP3 · M4A · WAV</span>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="cutDb">무음 기준 <span id="cutDbVal">-35 dB</span></label>
+            <input id="cutDb" type="range" min="-60" max="-10" step="1" value="-35" />
+          </div>
+          <div class="field">
+            <label for="cutMinSil">최소 무음 길이 <span id="cutMinSilVal">0.35초</span></label>
+            <input id="cutMinSil" type="range" min="0.1" max="1.5" step="0.05" value="0.35" />
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnDetect" type="button" disabled>무음 감지</button>
+          <button class="btn ghost" id="btnCutReset" type="button">초기화</button>
+        </div>
+        <div class="status" id="cutStatus"></div>
+      </div>
+
+      <div class="card" id="cutEditorCard">
+        <div class="preview-head">
+          <span class="card-title small">프리뷰</span>
+          <div class="chips" id="cutAspect">
+            <button class="chip active" type="button" data-aspect="9:16">9:16 쇼츠</button>
+            <button class="chip" type="button" data-aspect="16:9">16:9 롱폼</button>
+          </div>
+        </div>
+        <div class="preview-frame" id="previewFrame">
+          <video id="cutVideo" playsinline controls></video>
+          <div class="safe-guide"><span>자막 안전구역</span></div>
+          <div class="side-guide"></div>
+        </div>
+        <canvas id="waveCanvas" width="1200" height="180"></canvas>
+        <div class="timeline-legend">
+          <span><i class="dot keep"></i>유지</span>
+          <span><i class="dot cut"></i>무음 컷</span>
+          <span id="cutSummary" class="muted"></span>
+        </div>
+        <div id="cutList" class="cut-list"></div>
+        <div class="row">
+          <button class="btn ghost" id="btnExportPlan" type="button" disabled>컷 플랜 저장(JSON)</button>
+          <button class="btn ghost" id="btnExportSrt" type="button" disabled>자막 초안 SRT</button>
+        </div>
+      </div>
+
+      <div class="card" id="subtitleCard">
+        <h2 class="card-title">자막 초안</h2>
+        <p class="muted">컷 구간마다 한 줄씩 적으면 SRT로 내려받아 유튜브·편집기에 그대로 올릴 수 있습니다.</p>
+        <div id="subtitleList" class="sub-list"></div>
+        <div class="row">
+          <button class="btn ghost" id="btnAddSub" type="button">줄 추가</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">원격 고속 렌더링 워커</h2>
+        <p class="muted">집 PC나 서버에서 <code>worker/start_worker.bat</code>을 실행하고 주소를 넣으면, 무음 컷 + 자막 + MP4 렌더링을 대신 해 줍니다. (HTTPS 터널 주소 필요 — worker/README.md 참고)</p>
+        <div class="field">
+          <label for="workerUrl">워커 주소</label>
+          <input id="workerUrl" type="url" placeholder="https://my-worker.example.com" />
+        </div>
+        <div class="row">
+          <button class="btn ghost" id="btnWorkerHealth" type="button">연결 확인</button>
+          <button class="btn primary" id="btnWorkerRender" type="button">워커로 렌더링</button>
+        </div>
+        <div class="field">
+          <label for="renderOpts">렌더 옵션</label>
+          <div class="chips" id="renderOpts">
+            <label class="check"><input type="checkbox" id="optSilence" checked /> 무음 자동 컷</label>
+            <label class="check"><input type="checkbox" id="optSubs" checked /> 자동 자막(Whisper)</label>
+            <label class="check"><input type="checkbox" id="optSafe" checked /> 안전구역 자막</label>
+          </div>
+        </div>
+        <div class="status" id="renderStatus"></div>
+        <div id="renderResult" class="hidden"></div>
+      </div>
+    </section>
+
+    <!-- ============ 설정 ============ -->
+    <section class="panel hidden" id="panel-settings" data-panel="settings">
+      <div class="card">
+        <h2 class="card-title">API 연결</h2>
+        <p class="muted">키는 이 브라우저의 <code>localStorage</code>에만 저장되고 어디로도 전송되지 않습니다. YouTube·Gemini 요청은 내 브라우저에서 구글로 바로 갑니다.</p>
+
+        <div class="field">
+          <label for="ytKey">YouTube Data API v3 키</label>
+          <input id="ytKey" type="password" autocomplete="off" placeholder="AIza..." />
+          <div class="row tight">
+            <button class="btn tiny ghost" id="btnTestYt" type="button">연결 테스트</button>
+            <span class="status inline" id="ytKeyStatus"></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="geminiKey">Google Gemini API 키</label>
+          <input id="geminiKey" type="password" autocomplete="off" placeholder="AIza..." />
+          <div class="row tight">
+            <button class="btn tiny ghost" id="btnTestGemini" type="button">연결 테스트</button>
+            <span class="status inline" id="geminiKeyStatus"></span>
+          </div>
+          <div class="field sub">
+            <label for="geminiModel">모델</label>
+            <select id="geminiModel">
+              <option value="gemini-2.5-flash">gemini-2.5-flash (권장)</option>
+              <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+              <option value="gemini-2.5-pro">gemini-2.5-pro (느림)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn primary" id="btnSaveKeys" type="button">저장</button>
+          <button class="btn ghost" id="btnClearKeys" type="button">키 삭제</button>
+        </div>
+        <div class="status" id="settingsStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">키 발급 5분 가이드</h2>
+        <ol class="steps">
+          <li><b>YouTube Data API v3</b> — <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">API 라이브러리</a>에서 사용 설정 → <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">사용자 인증 정보</a> → <b>API 키 만들기</b>. 하루 10,000 유닛 무료(분석 1회 ≈ 5~10 유닛).</li>
+          <li><b>Gemini API</b> — <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>에서 <b>Create API key</b>. 무료 등급으로도 개인용은 충분합니다.</li>
+          <li>두 키를 위에 붙여넣고 <b>연결 테스트</b> → <b>저장</b>. 키가 없어도 <b>샘플</b> 버튼으로 모든 화면을 써 볼 수 있고, <b>프롬프트 복사</b>로 ChatGPT·Claude에 붙여 쓸 수 있습니다.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">채널 스타일 프리셋</h2>
+        <p class="muted">대본·제목·캡션 생성에 이 말투와 규칙이 자동으로 들어갑니다.</p>
+        <div class="preset-list" id="presetList">
+          <label class="preset">
+            <input type="radio" name="preset" value="healthlab" />
+            <span class="preset-body">
+              <b>헬스랩 1분</b>
+              <small>논문 근거 · AI 티 최소화 · 35~40초 쇼츠 + 3분 롱폼</small>
+            </span>
+          </label>
+          <label class="preset">
+            <input type="radio" name="preset" value="d2gym" />
+            <span class="preset-body">
+              <b>디투짐 릴스</b>
+              <small>탕정 헬스장 홍보 · 금지어 자동 회피 · 지역 태그</small>
+            </span>
+          </label>
+          <label class="preset">
+            <input type="radio" name="preset" value="general" />
+            <span class="preset-body">
+              <b>일반 유튜브</b>
+              <small>범용 후킹 구조 · 담백한 말투</small>
+            </span>
+          </label>
+        </div>
+        <div class="preset-note" id="presetNote"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">데이터 · 백업</h2>
+        <div class="row">
+          <button class="btn ghost" id="btnExportAll" type="button">설정 내보내기(JSON)</button>
+          <button class="btn ghost" id="btnInstallHelp" type="button">홈 화면에 추가</button>
+        </div>
+        <div class="status" id="installStatus"></div>
+        <p class="muted tiny">이 앱은 GitHub Pages의 정적 사이트입니다. 서버가 없고, 올린 영상은 워커에 직접 보내지 않는 한 기기를 떠나지 않습니다.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <button type="button" data-tab="analyzer" class="tab active"><span class="ico">📊</span><span>분석</span></button>
+    <button type="button" data-tab="script" class="tab"><span class="ico">✍️</span><span>기획</span></button>
+    <button type="button" data-tab="thumb" class="tab"><span class="ico">🖼️</span><span>썸네일</span></button>
+    <button type="button" data-tab="cut" class="tab"><span class="ico">✂️</span><span>컷편집</span></button>
+    <button type="button" data-tab="settings" class="tab"><span class="ico">⚙️</span><span>설정</span></button>
+  </nav>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/app.js"></script>
+<script src="assets/youtube.js"></script>
+<script src="assets/gemini.js"></script>
+<script src="assets/analyzer.js"></script>
+<script src="assets/script-studio.js"></script>
+<script src="assets/thumbnail-studio.js"></script>
+<script src="assets/cut-editor.js"></script>
+<script src="assets/boot.js"></script>
+</body>
+</html>

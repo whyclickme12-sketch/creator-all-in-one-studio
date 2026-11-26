@@ -1,0 +1,136 @@
+/* Gemini API — 프롬프트 구성 · 호출 · JSON 파싱 */
+(function () {
+  'use strict';
+  var CAS = window.CAS;
+  var BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
+  var FALLBACK = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+  function key() { return String(CAS.getSetting('geminiKey') || '').trim(); }
+  function model() { return CAS.getSetting('model') || 'gemini-2.5-flash'; }
+
+  function call(modelName, body) {
+    return fetch(BASE + modelName + ':generateContent?key=' + encodeURIComponent(key()), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) {
+          var msg = (data.error && data.error.message) || ('Gemini 오류 ' + res.status);
+          var err = new Error(msg);
+          err.status = res.status;
+          throw err;
+        }
+        var cands = data.candidates || [];
+        if (!cands.length) {
+          var block = data.promptFeedback && data.promptFeedback.blockReason;
+          throw new Error(block ? ('요청이 안전 정책으로 차단되었습니다: ' + block) : 'Gemini가 빈 응답을 돌려줬습니다.');
+        }
+        var parts = (cands[0].content && cands[0].content.parts) || [];
+        var text = parts.map(function (p) { return p.text || ''; }).join('').trim();
+        if (!text) throw new Error('Gemini 응답이 비어 있습니다.');
+        return text;
+      });
+    });
+  }
+
+  function systemPrompt(extra) {
+    var p = CAS.preset();
+    var ban = (p.ban && p.ban.length) ? '\n[금지 표현] 다음 단어는 쓰지 않는다: ' + p.ban.join(', ') : '';
+    return '너는 한국어 유튜브 채널 운영을 돕는 실무 PD 겸 카피라이터다.\n'
+      + '[채널 스타일]\n' + p.style + ban + '\n'
+      + '[공통 규칙]\n'
+      + '- 수치나 사실을 만들지 않는다. 모르면 "확인 필요"라고 적는다.\n'
+      + '- 한국어로, 실제로 말할 수 있는 문장으로 쓴다. 광고 문구처럼 과장하지 않는다.\n'
+      + '- 결과는 요청한 JSON 형식만 출력한다.\n'
+      + (extra ? '\n' + extra : '');
+  }
+
+  function parseJson(text) {
+    var s = String(text || '').trim();
+    s = s.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+    try { return JSON.parse(s); } catch (e) {}
+    var start = s.search(/[\{\[]/);
+    var end = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+    if (start >= 0 && end > start) {
+      var slice = s.slice(start, end + 1);
+      try { return JSON.parse(slice); } catch (e2) {}
+      // 흔한 오류: 뒤에 붙은 쉼표
+      try { return JSON.parse(slice.replace(/,\s*([}\]])/g, '$1')); } catch (e3) {}
+    }
+    throw new Error('Gemini 응답을 JSON으로 읽지 못했습니다. 다시 시도해 주세요.');
+  }
+
+  CAS.gemini = {
+    ready: function () { return !!key(); },
+
+    testKey: function (testValue, testModel) {
+      var saved = CAS.getSetting('geminiKey');
+      var savedModel = CAS.getSetting('model');
+      if (testValue && testValue !== saved) CAS.saveSettings({ geminiKey: testValue.trim() });
+      if (testModel) CAS.saveSettings({ model: testModel });
+      var m = testModel || model();
+      return call(m, {
+        contents: [{ role: 'user', parts: [{ text: '한 단어로 "ok"라고만 답해.' }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 16 }
+      }).then(function (t) {
+        if (testValue && testValue !== saved) CAS.saveSettings({ geminiKey: saved || '' });
+        if (testModel) CAS.saveSettings({ model: savedModel });
+        return /ok/i.test(t);
+      }).catch(function (e) {
+        if (testValue && testValue !== saved) CAS.saveSettings({ geminiKey: saved || '' });
+        if (testModel) CAS.saveSettings({ model: savedModel });
+        throw e;
+      });
+    },
+
+    /* 자유 텍스트 생성 */
+    text: function (userPrompt, opts) {
+      opts = opts || {};
+      var body = {
+        systemInstruction: { parts: [{ text: opts.system || systemPrompt() }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: opts.temperature == null ? 0.85 : opts.temperature,
+          maxOutputTokens: opts.maxTokens || 4096
+        }
+      };
+      var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
+      function attempt(i) {
+        return call(order[i], body).catch(function (e) {
+          var retryable = e.status === 404 || e.status === 400 && /model/i.test(e.message || '');
+          if (retryable && i < order.length - 1) return attempt(i + 1);
+          throw e;
+        });
+      }
+      return attempt(0);
+    },
+
+    /* JSON 생성 */
+    json: function (userPrompt, opts) {
+      opts = opts || {};
+      var instruction = systemPrompt(opts.extraSystem)
+        + '\n\n아래 JSON 스키마에 정확히 맞춰 JSON 하나만 출력한다.\n' + (opts.schemaHint || '');
+      var body = {
+        systemInstruction: { parts: [{ text: instruction }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: opts.temperature == null ? 0.8 : opts.temperature,
+          maxOutputTokens: opts.maxTokens || 6144,
+          responseMimeType: 'application/json'
+        }
+      };
+      var order = [model()].concat(FALLBACK.filter(function (m) { return m !== model(); }));
+      function attempt(i) {
+        return call(order[i], body).catch(function (e) {
+          var retryable = e.status === 404 || (e.status === 400 && /model|response/i.test(e.message || ''));
+          if (retryable && i < order.length - 1) return attempt(i + 1);
+          throw e;
+        });
+      }
+      return attempt(0).then(parseJson);
+    },
+
+    systemPrompt: systemPrompt
+  };
+})();
