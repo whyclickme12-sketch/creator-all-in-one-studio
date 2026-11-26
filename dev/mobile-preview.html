@@ -28,7 +28,7 @@
   var frame = document.getElementById('frame');
   frame.style.width = w + 'px';
   frame.style.height = h + 'px';
-  frame.src = '../index.html#' + tab;
+  frame.src = '../index.html?v=' + Date.now() + '#' + tab;
   document.getElementById('cap').textContent = w + ' × ' + h + ' · ' + tab;
 </script>
 </body>
