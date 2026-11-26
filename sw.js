@@ -1,5 +1,5 @@
 /* 앱 셸 오프라인 캐시 (network-first, 실패 시 캐시) */
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.0.1';
 const SHELL = [
   './',
   './index.html',

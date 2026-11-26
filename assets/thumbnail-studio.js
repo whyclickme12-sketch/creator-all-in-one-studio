@@ -85,7 +85,16 @@
     ctx.textBaseline = 'top';
     var lines = wrapLines(ctx, title || '제목을 입력하세요', W - pad * 2 - barW - 10).slice(0, 2);
     var lineH = titleSize * 1.16;
-    var startY = pad + Math.round(H * 0.30);
+    var blockH = lines.length * lineH;
+    var hasSub = !!sub;
+    var subSize = Math.round(titleSize * 0.34);
+    var subBlock = hasSub ? subSize * 1.35 * wrapLines(ctx, sub, W - pad * 2 - 20).slice(0, 2).length : 0;
+    // 제목+보조 블록을 세로 중앙에 두되 하단 표식과 겹치지 않게
+    var footerY = H - pad * 0.62 - Math.round(W * 0.022);
+    var contentH = blockH + (hasSub ? subBlock + titleSize * 0.30 : 0);
+    var startY = Math.round((H - contentH) / 2 - H * 0.04);
+    if (startY < pad + H * 0.06) startY = pad + Math.round(H * 0.06);
+    if (startY + contentH > footerY - 20) startY = Math.max(pad, footerY - 20 - contentH);
     lines.forEach(function (line, i) {
       // 그림자
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -117,21 +126,20 @@
 
     // 보조 문구
     if (sub) {
-      var subSize = Math.round(titleSize * 0.34);
       ctx.font = '600 ' + subSize + 'px "Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
       ctx.fillStyle = t.sub;
-      var subY = startY + lines.length * lineH + Math.round(titleSize * 0.32);
+      var subY = startY + blockH + Math.round(titleSize * 0.30);
       wrapLines(ctx, sub, W - pad * 2 - 20).slice(0, 2).forEach(function (l, i) {
-        ctx.fillText(l, pad + barW + 10, subY + i * subSize * 1.3);
+        ctx.fillText(l, pad + barW + 10, subY + i * subSize * 1.35);
       });
     }
 
     // 하단 표식
     ctx.font = '700 ' + Math.round(W * 0.022) + 'px "Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
     ctx.fillStyle = state.accent;
-    ctx.fillText('● ', pad, H - pad - W * 0.02);
+    ctx.fillText('●', pad, footerY);
     ctx.fillStyle = t.sub;
-    ctx.fillText(state.size === '1080x1920' ? 'SHORTS' : (state.size === '1080x1080' ? 'CARD' : 'THUMBNAIL'), pad + W * 0.032, H - pad - W * 0.02);
+    ctx.fillText(state.size === '1080x1920' ? 'SHORTS' : (state.size === '1080x1080' ? 'CARD' : 'THUMBNAIL'), pad + W * 0.032, footerY);
   }
 
   CAS.thumbnail = { redraw: draw };

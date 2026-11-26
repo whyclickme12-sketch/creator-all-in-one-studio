@@ -93,7 +93,8 @@ curl -F "file=@input.mp4" -F "aspect=9:16" -F "silence_db=-35" -F "min_silence=0
 
 - **"연결 실패"** — ① 서버가 켜져 있는지 ② 주소가 `https://`인지(폰) ③ `cloudflared` 창이 살아 있는지 확인.
 - **자막이 안 나옴** — `faster-whisper` 설치 실패가 가장 흔합니다. `pip install faster-whisper`를 다시 실행하고 콘솔의 `[whisper]` 로그를 확인하세요. 실패해도 컷 편집은 정상 동작합니다.
-- **한글 자막 폰트 깨짐** — 윈도우는 `Malgun Gothic`을 씁니다. 리눅스 서버라면 `fonts-noto-cjk`를 설치하고 `server.py`의 `FontName`을 `Noto Sans CJK KR`로 바꾸세요.
+- **한글 자막 폰트 깨짐** — 자막은 `subs.ass`를 만들어 태우고, 폰트는 `Malgun Gothic`(윈도우 기본)입니다. 리눅스 서버라면 `fonts-noto-cjk`를 설치하고 `server.py`의 `write_ass()` 안 `Style:` 줄의 `Malgun Gothic`을 `Noto Sans CJK KR`로 바꾸세요.
+- **자막 위치** — 자막은 SRT가 아니라 해상도를 지정한 ASS로 그립니다(9:16은 하단 210px, 16:9는 80px 여백). `safe` 옵션을 끄면 더 아래(90px/48px)에 붙습니다.
 - **업로드가 끊김** — 파일이 크면(300MB↑) 와이파이에서 시도하세요. `MAX_UPLOAD_MB`(기본 800)로 제한을 바꿀 수 있습니다.
 - **느림** — `preset veryfast`로 인코딩합니다. 3분 영상이 보통 PC에서 1~2분, Whisper까지 하면 2~4분 걸립니다.
 

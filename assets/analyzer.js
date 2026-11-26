@@ -18,7 +18,7 @@
     ];
     var now = Date.now();
     var rows = titles.map(function (t, i) {
-      var daysAgo = (t[4] === 0 ? 0 : t[4]) + Math.floor(i * 2.3);
+      var daysAgo = i * 2 + 2;
       var d = new Date(now - daysAgo * 86400000);
       var k = new Date(d.getTime() + 9 * 3600 * 1000);
       return {

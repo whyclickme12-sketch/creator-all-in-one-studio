@@ -89,6 +89,17 @@ def get_job(job_id: str) -> dict | None:
         return dict(job) if job else None
 
 
+def whisper_available() -> bool:
+    """패키지가 설치되어 있는지만 확인합니다(모델은 처음 렌더 때 로드)."""
+    global _whisper_error
+    try:
+        import faster_whisper  # noqa: F401
+        return True
+    except Exception as e:  # noqa: BLE001
+        _whisper_error = _whisper_error or f"{type(e).__name__}: {e}"
+        return False
+
+
 def load_whisper():
     """Faster-Whisper를 한 번만 로드합니다. 없으면 None."""
     global _whisper, _whisper_error
@@ -118,6 +129,82 @@ def srt_time(sec: float) -> str:
         ms = 0
         s += 1
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def ass_time(sec: float) -> str:
+    """ASS 시간 표기 (h:mm:ss.cc)"""
+    cs = int(round(max(0.0, float(sec)) * 100))
+    h, cs = divmod(cs, 360000)
+    m, cs = divmod(cs, 6000)
+    s, cs = divmod(cs, 100)
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+
+def parse_srt(text: str) -> list[tuple[float, float, str]]:
+    """SRT 문자열 → [(start, end, text)]. 타임코드가 깨진 블록은 건너뜁니다."""
+    cues: list[tuple[float, float, str]] = []
+    blocks = re.split(r"\n\s*\n", (text or "").replace("\r\n", "\n").strip())
+    for block in blocks:
+        lines = [ln for ln in block.split("\n") if ln.strip() != ""]
+        if not lines:
+            continue
+        idx = 0
+        if re.fullmatch(r"\d+", lines[0].strip()):
+            idx = 1
+        if idx >= len(lines) or "-->" not in lines[idx]:
+            continue
+        m = re.match(
+            r"\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})",
+            lines[idx],
+        )
+        if not m:
+            continue
+        g = [int(x) for x in m.groups()]
+        start = g[0] * 3600 + g[1] * 60 + g[2] + g[3] / 1000
+        end = g[4] * 3600 + g[5] * 60 + g[6] + g[7] / 1000
+        body = " ".join(ln.strip() for ln in lines[idx + 1:]).strip()
+        if not body or end <= start:
+            continue
+        cues.append((start, end, body))
+    return cues
+
+
+def write_ass(cues: list[tuple[float, float, str]], path: Path, width: int, height: int, safe: bool) -> None:
+    """영상 해상도에 맞춘 ASS 자막을 씁니다(세로는 하단 안전구역).
+
+    SRT+force_style은 PlayRes가 384x288로 잡혀 여백이 엉뚱한 곳에 가므로,
+    해상도를 직접 지정한 ASS를 만들어 정확히 배치합니다.
+    """
+    portrait = height >= width
+    font_px = 54 if portrait else 46
+    if portrait:
+        margin_v = 210 if safe else 90
+        margin_lr = 60
+    else:
+        margin_v = 80 if safe else 48
+        margin_lr = 40
+    outline = max(2, round(font_px * 0.06))
+    header = (
+        "[Script Info]\n"
+        "ScriptType: v4.00+\n"
+        f"PlayResX: {width}\n"
+        f"PlayResY: {height}\n"
+        "WrapStyle: 0\n"
+        "ScaledBorderAndShadow: yes\n\n"
+        "[V4+ Styles]\n"
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
+        "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
+        "Alignment, MarginL, MarginR, MarginV, Encoding\n"
+        f"Style: Default,Malgun Gothic,{font_px},&H00FFFFFF,&H000000FF,&H00000000,&H78000000,"
+        f"-1,0,0,0,100,100,0,0,1,{outline},0,2,{margin_lr},{margin_lr},{margin_v},1\n\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+    )
+    lines = [header]
+    for start, end, body in cues:
+        text = body.replace("\n", " ").replace("{", "(").replace("}", ")").strip()
+        lines.append(f"Dialogue: 0,{ass_time(start)},{ass_time(end)},Default,,0,0,0,,{text}\n")
+    path.write_text("".join(lines), encoding="utf-8-sig")
 
 
 def safe_float(value, fallback: float) -> float:
@@ -262,24 +349,23 @@ def render_cut_job(job_id: str, input_path: Path, opts: dict) -> None:
         final_path = out_dir / "final.mp4"
         if srt_path.exists() and srt_path.stat().st_size > 0 and do_subs:
             set_job(job_id, progress=82, message="자막 태우는 중")
-            style = (
-                "FontName=Malgun Gothic,FontSize=17,PrimaryColour=&H00FFFFFF,"
-                "BorderStyle=1,Outline=1.6,Shadow=0,Alignment=2"
-            )
-            # 안전구역: 하단 여백 210px (9:16 기준). 가로 영상은 90px.
-            margin_v = 210 if aspect == "9:16" else 90
-            style += f",MarginV={margin_v},MarginL=60,MarginR=60" if do_safe else ",MarginV=48,MarginL=40,MarginR=40"
-            srt_escaped = str(srt_path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
-            sub_filter = f"subtitles='{srt_escaped}':force_style='{style}'"
-            proc = run([
-                ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(current),
-                "-vf", sub_filter, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                "-c:a", "copy", "-movflags", "+faststart", str(final_path),
-            ], timeout=5400)
-            if proc.returncode != 0 or not final_path.exists():
-                # 자막 실패는 치명적이지 않게 처리
+            cues = parse_srt(srt_path.read_text(encoding="utf-8-sig", errors="replace"))
+            ass_path = out_dir / "subs.ass"
+            if cues:
+                write_ass(cues, ass_path, target_w, target_h, do_safe)
+            if cues and ass_path.exists():
+                ass_escaped = str(ass_path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+                proc = run([
+                    ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(current),
+                    "-vf", f"ass='{ass_escaped}'", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                    "-c:a", "copy", "-movflags", "+faststart", str(final_path),
+                ], timeout=5400)
+                if proc.returncode != 0 or not final_path.exists():
+                    shutil.copyfile(current, final_path)
+                    set_job(job_id, message="자막 합성 실패 — 자막 없이 저장했습니다")
+            else:
                 shutil.copyfile(current, final_path)
-                set_job(job_id, message="자막 합성 실패 — 자막 없이 저장했습니다")
+                set_job(job_id, message="자막을 읽지 못해 자막 없이 저장했습니다")
         else:
             shutil.copyfile(current, final_path)
         try:
@@ -332,7 +418,7 @@ def index():
 code{{background:#161b22;padding:2px 6px;border-radius:6px}} .ok{{color:#3ddc97}} .bad{{color:#ff6b6b}}</style>
 <h2>올인원 유튜브 스튜디오 · 렌더 워커 v{APP_VERSION}</h2>
 <p>FFmpeg: <b class="{'ok' if ffmpeg else 'bad'}">{'설치됨' if ffmpeg else '없음'}</b></p>
-<p>Whisper: <b class="{'ok' if not _whisper_error else 'bad'}">{'사용 가능' if not _whisper_error else '미설치/오류'}</b></p>
+<p>Whisper: <b class="{'ok' if whisper_available() else 'bad'}">{'사용 가능' if whisper_available() else '미설치/오류'}</b></p>
 <p>작업 폴더: <code>{JOBS_DIR}</code> · {JOB_TTL_HOURS}시간 뒤 자동 삭제</p>
 <p>API 문서: <a href="/docs" style="color:#ffd400">/docs</a></p>
 <p>웹앱의 "원격 고속 렌더링 워커" 주소 칸에 이 주소를 그대로 넣으세요.</p>
@@ -347,7 +433,7 @@ def health():
         "version": APP_VERSION,
         "ffmpeg": bool(ffmpeg),
         "ffprobe": bool(probe),
-        "whisper": not bool(_whisper_error),
+        "whisper": whisper_available(),
         "whisper_error": _whisper_error,
         "jobs": len(JOBS),
     }
