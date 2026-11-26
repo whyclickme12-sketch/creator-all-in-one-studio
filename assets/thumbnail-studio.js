@@ -165,6 +165,13 @@
   ].join('\n');
 
   function demo(topic) {
+    var key = CAS.getSetting('preset');
+    if (key === 'jipgo') return demoJipgo(topic);
+    if (key === 'cat4') return demoCat(topic);
+    return demoHealth(topic);
+  }
+
+  function demoHealth(topic) {
     return {
       concepts: [
         {
@@ -260,6 +267,76 @@
     });
   }
 
+  /* 집 go 샘플 — 가게 이름·가격은 만들지 않는다 */
+  function demoJipgo(topic) {
+    return {
+      concepts: [
+        {
+          name: '현장감 클로즈업형',
+          composition: '좌측 절반은 노릇하게 구운 안주 클로즈업, 우측 상단에 큰 제목 2줄. 배경은 어둡게 눌러 음식만 밝게.',
+          text: '오늘은\n1차만',
+          colors: '딥 브라운 + 앰버 조명 + 크림 타이포',
+          imagePrompt: 'close-up photo of sizzling Korean grilled fish and a rolled omelette on a dark wooden table in a small old pub, warm amber tungsten light, rising steam, shallow depth of field, no text, no people, 16:9'
+        },
+        {
+          name: '간판 골목형',
+          composition: '밤 골목의 간판 불빛을 배경으로 중앙에 제목 2줄. 하단 여백에 작은 집 아이콘 하나.',
+          text: '퇴근 후\n여기서 끝',
+          colors: '딥 네이비 + 따뜻한 전구색 + 오프화이트',
+          imagePrompt: 'quiet night alley in a Korean neighborhood, glowing old restaurant signboards reflecting on pavement, warm amber and deep navy tones, cinematic, no text, no people, 16:9'
+        },
+        {
+          name: '한 줄 후킹형',
+          composition: '테이블 위 빈 접시와 반쯤 남은 잔. 상단에 얇은 서체 한 줄, 나머지는 비워 둔다.',
+          text: '2차는\n집에서',
+          colors: '블랙 + 크림 + 앰버 포인트',
+          imagePrompt: 'empty plates and a half-finished beer glass on a worn wooden table in a small Korean pub, warm dim light, shallow depth of field, no text, no people, 16:9'
+        }
+      ],
+      captions: {
+        youtubeCommunity: '오늘은 2차 없이 1차에서 끝내는 날입니다. 동네에서 오래 버틴 집 한 곳 다녀왔습니다. 여러분의 퇴근 후 1차는 어디인가요?',
+        instagram: '퇴근하고 걷다가 불 켜진 간판 하나에 끌려 들어갔습니다.\n안주 두 개에 한잔이면 충분했습니다.\n2차 대신 집에서 한잔 더, 그게 오늘의 결론입니다.\n동네 노포는 그대로 있어 줘서 고맙습니다.',
+        threads: '2차 생각이 안 나는 건 아니지만, 집에 가서 한잔 더 하면 되니까요. 오늘도 잘 먹고 집 go.'
+      },
+      hashtags: (CAS.preset().tags || []).concat(['#1차만', '#동네한잔', '#노포투어'])
+    };
+  }
+
+  /* 고양이 샘플 — 가볍고 따뜻한 톤만 */
+  function demoCat(topic) {
+    return {
+      concepts: [
+        {
+          name: '새벽 감성형',
+          composition: '어두운 침실, 이불 위를 걷는 고양이를 크게. 상단에 짧은 제목 2줄만.',
+          text: '새벽 4시\n츄르 소동',
+          colors: '딥그레이 + 따뜻한 램프빛 + 크림 타이포',
+          imagePrompt: 'cozy dark bedroom at dawn, a fluffy cat walking across a duvet, soft warm lamp light, photorealistic, gentle mood, no text, no people, 16:9'
+        },
+        {
+          name: '네 마리 시선형',
+          composition: '네 마리 고양이 얼굴을 2x2로 배치하고, 중앙에 큰 제목 한 줄.',
+          text: '넷 다\n모였다',
+          colors: '웜그레이 + 크림 + 살구 포인트',
+          imagePrompt: 'four cats of different colors looking up at the camera together on a living room floor, soft daylight, photorealistic, cute and warm, no text, no people, 16:9'
+        },
+        {
+          name: '순서 대비형',
+          composition: '나란히 밥을 먹는 고양이 클로즈업, 하단에 작은 제목 2줄.',
+          text: '먹는 순서는\n정해져 있다',
+          colors: '아이보리 + 브라운 + 민트 포인트',
+          imagePrompt: 'close-up of several cats eating side by side from bowls on a kitchen floor, soft natural light, photorealistic, warm home atmosphere, no text, no people, 16:9'
+        }
+      ],
+      captions: {
+        youtubeCommunity: '새벽 4시에 작은 발소리 하나로 시작되는 우리 집 루틴입니다. 츄르 봉지 뜯는 소리만 나도 다들 모여요. 여러분 집 냥이는 몇 시에 깨우나요?',
+        instagram: '새벽 4시, 넷째가 먼저 일어납니다.\n그 소리에 둘째가 깨고, 첫째는 이미 문 앞에 앉아 있어요.\n츄르 봉지 뜯는 소리는 숨길 수가 없습니다.\n오늘도 웃으면서 새벽 간식 챙겼습니다.',
+        threads: '우리 집은 먹는 순서가 정해져 있어요. 첫째, 둘째, 넷째, 그리고 셋째. 사람이 바꾸려 해도 안 바뀝니다.'
+      },
+      hashtags: (CAS.preset().tags || []).concat(['#냥스타그램', '#고양이쇼츠', '#집사브이로그'])
+    };
+  }
+
   CAS.thumbnailStudio = {
     init: function () {
       var topicEl = document.getElementById('thTopic');
@@ -333,7 +410,11 @@
 
       if (btn) btn.addEventListener('click', run);
       if (demoBtn) demoBtn.addEventListener('click', function () {
-        var topic = (topicEl.value || 'AI가 수능을 다 풀어도 근육은 못 만든다').trim();
+        var pk = CAS.getSetting('preset');
+        var dflt = pk === 'jipgo' ? '퇴근 후 동네 노포 한잔'
+          : pk === 'cat4' ? '새벽 4시 츄르 소동'
+          : 'AI가 수능을 다 풀어도 근육은 못 만든다';
+        var topic = (topicEl.value || dflt).trim();
         render(demo(topic), topic, { demo: true });
         CAS.setStatus(status, '샘플을 채웠습니다.', '');
       });
